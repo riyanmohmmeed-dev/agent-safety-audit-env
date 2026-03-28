@@ -17,6 +17,15 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
+try:
+    from openenv.core import Action, Observation
+    _HAS_OPENENV = True
+except ImportError:
+    # Fallback: use plain BaseModel if openenv not installed
+    Action = BaseModel  # type: ignore[misc,assignment]
+    Observation = BaseModel  # type: ignore[misc,assignment]
+    _HAS_OPENENV = False
+
 
 # ---------------------------------------------------------------------------
 # Shared: Action Log Entry (what the AI agent wants to do)
@@ -66,7 +75,7 @@ VALID_VIOLATION_TYPES = frozenset({
 VALID_SEVERITIES = frozenset({"critical", "high", "medium", "low"})
 
 
-class MonitorAction(BaseModel):
+class MonitorAction(Action):  # type: ignore[misc]
     """The monitor's decision for the current action.
 
     For each action the AI agent wants to take, the monitor decides:
@@ -110,7 +119,7 @@ class PreviousDecision(BaseModel):
     decision: str = Field(..., description="The decision made: allow/block/flag")
 
 
-class MonitorObservation(BaseModel):
+class MonitorObservation(Observation):  # type: ignore[misc]
     """The observation presented to the monitor agent each step.
 
     Shows the CURRENT action the AI agent wants to take, plus the

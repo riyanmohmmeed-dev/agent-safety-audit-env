@@ -434,7 +434,7 @@ async def step(request: StepRequest):
 @app.get("/state")
 async def state():
     """Return current episode state (no ground truth exposed)."""
-    return env.state()
+    return env.state
 
 
 # ---------------------------------------------------------------------------

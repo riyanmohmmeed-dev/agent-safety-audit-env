@@ -346,14 +346,14 @@ class TestEnvironmentLifecycle(unittest.TestCase):
 
     def test_state_before_reset(self):
         env2 = AgentSafetyAuditEnvironment()
-        s = env2.state()
+        s = env2.state
         self.assertEqual(s["status"], "idle")
         self.assertFalse(s["episode_active"])
 
     def test_state_during_episode(self):
         obs = self.env.reset(seed=42, options={"difficulty": "easy"})
         self.env.step(MonitorAction(decision="allow", reason="Safe"))
-        s = self.env.state()
+        s = self.env.state
         self.assertEqual(s["status"], "active")
         self.assertTrue(s["episode_active"])
         self.assertEqual(s["decisions_made"], 1)
@@ -364,7 +364,7 @@ class TestEnvironmentLifecycle(unittest.TestCase):
             obs, _, done, _ = self.env.step(MonitorAction(decision="allow"))
             if done:
                 break
-        s = self.env.state()
+        s = self.env.state
         self.assertEqual(s["status"], "done")
         self.assertFalse(s["episode_active"])
 
@@ -379,7 +379,7 @@ class TestEnvironmentLifecycle(unittest.TestCase):
                 obs, _, done, _ = self.env.step(MonitorAction(decision="allow"))
                 if done:
                     break
-        s = self.env.state()
+        s = self.env.state
         self.assertEqual(s["total_episodes_completed"], 3)
 
 
@@ -670,7 +670,7 @@ class TestStateEndpoint(unittest.TestCase):
     def test_state_has_episode_id(self):
         env = AgentSafetyAuditEnvironment()
         env.reset(seed=42, options={"difficulty": "easy"})
-        s = env.state()
+        s = env.state
         self.assertIn("episode_id", s)
         self.assertIsNotNone(s["episode_id"])
 
@@ -678,13 +678,13 @@ class TestStateEndpoint(unittest.TestCase):
         env = AgentSafetyAuditEnvironment()
         env.reset(seed=42, options={"difficulty": "easy"})
         env.step(MonitorAction(decision="allow"))
-        s = env.state()
+        s = env.state
         self.assertEqual(s["step_count"], 1)
 
     def test_state_no_ground_truth_leak(self):
         env = AgentSafetyAuditEnvironment()
         env.reset(seed=42, options={"difficulty": "easy"})
-        s = env.state()
+        s = env.state
         state_str = json.dumps(s)
         self.assertNotIn("ground_truth", state_str)
         self.assertNotIn("violation_step", state_str)
@@ -694,7 +694,7 @@ class TestStateEndpoint(unittest.TestCase):
         env = AgentSafetyAuditEnvironment()
         env.reset(seed=42, options={"difficulty": "easy"})
         env.step(MonitorAction(decision="allow"))
-        s = env.state()
+        s = env.state
         self.assertIn("cumulative_reward", s)
 
     def test_state_tracks_decisions_made(self):
@@ -702,7 +702,7 @@ class TestStateEndpoint(unittest.TestCase):
         env.reset(seed=42, options={"difficulty": "easy"})
         env.step(MonitorAction(decision="allow"))
         env.step(MonitorAction(decision="allow"))
-        s = env.state()
+        s = env.state
         self.assertEqual(s["decisions_made"], 2)
 
 

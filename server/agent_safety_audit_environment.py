@@ -24,6 +24,11 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+try:
+    from openenv.core import Environment as _BaseEnvironment
+except ImportError:
+    from abc import ABC as _BaseEnvironment  # type: ignore[assignment]
+
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -127,7 +132,7 @@ def _derive_steps_to_flag(task: Dict[str, Any]) -> List[int]:
 # Environment
 # ---------------------------------------------------------------------------
 
-class AgentSafetyAuditEnvironment:
+class AgentSafetyAuditEnvironment(_BaseEnvironment):  # type: ignore[misc]
     """OpenEnv-compliant environment for real-time AI Agent Safety Monitoring.
 
     The monitor agent sees an AI agent's actions one at a time and decides
@@ -135,6 +140,11 @@ class AgentSafetyAuditEnvironment:
     """
 
     def __init__(self) -> None:
+        # Initialize OpenEnv base (transform=None, rubric=None)
+        try:
+            super().__init__()
+        except TypeError:
+            pass  # ABC fallback doesn't need __init__
         self._all_tasks = _load_tasks()
         self._current_task: Optional[Dict[str, Any]] = None
         self._action_log: List[Dict[str, Any]] = []
@@ -158,8 +168,10 @@ class AgentSafetyAuditEnvironment:
 
     def reset(
         self,
-        seed: int = 42,
+        seed: Optional[int] = None,
+        episode_id: Optional[str] = None,
         options: Optional[Dict[str, Any]] = None,
+        **kwargs: Any,
     ) -> MonitorObservation:
         """Reset the environment to a new episode.
 
@@ -172,8 +184,8 @@ class AgentSafetyAuditEnvironment:
         Returns:
             Initial observation showing the first action to evaluate.
         """
-        self._seed = seed
-        self._rng = random.Random(seed)
+        self._seed = seed if seed is not None else 42
+        self._rng = random.Random(self._seed)
         self._episode_done = False
         self._current_step_idx = 0
         self._decisions = []
@@ -238,7 +250,9 @@ class AgentSafetyAuditEnvironment:
     # ------------------------------------------------------------------
 
     def step(
-        self, action: MonitorAction
+        self, action: MonitorAction,
+        timeout_s: Optional[float] = None,
+        **kwargs: Any,
     ) -> Tuple[MonitorObservation, float, bool, Dict[str, Any]]:
         """Process a monitoring decision and advance to the next action.
 
@@ -357,9 +371,10 @@ class AgentSafetyAuditEnvironment:
         return self._current_observation, reward, done, info
 
     # ------------------------------------------------------------------
-    # state
+    # state (OpenEnv requires @property)
     # ------------------------------------------------------------------
 
+    @property
     def state(self) -> Dict[str, Any]:
         """Return the current episode state (NO ground truth)."""
         if self._current_task is None:
@@ -399,6 +414,10 @@ class AgentSafetyAuditEnvironment:
     def get_task_count(self) -> int:
         """Return total number of tasks across all difficulties."""
         return sum(len(tasks) for tasks in self._all_tasks.values())
+
+    def close(self) -> None:
+        """Clean up resources (OpenEnv Environment contract)."""
+        self._sandbox.reset()
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -456,6 +475,8 @@ class AgentSafetyAuditEnvironment:
             feedback=feedback,
             step_reward=step_reward,
             episode_score=episode_score,
+            done=done,
+            reward=step_reward,
         )
 
     def _empty_obs(self) -> MonitorObservation:

@@ -64,8 +64,6 @@ sequenceDiagram
 | **Meta Sev-1** (Mar 2026) | AI agent posted bad advice → engineer followed → 2hr data exposure |
 | **Replit Ghostwriter** (Jul 2025) | AI coding agent deleted production DB despite "stay away from prod" |
 | **AWS Kiro** (Dec 2025) | AI agent deleted and rebuilt production environment, 13hr outage |
-| **MS EchoLeak** (CVE-2025-32711) | Copilot auto-exfiltrated M365 data via single crafted email |
-| **OpenClaw ClawHavoc** (Feb 2026) | 1,184 malicious tool-use skills deployed via unvetted package |
 
 ## Installation
 
