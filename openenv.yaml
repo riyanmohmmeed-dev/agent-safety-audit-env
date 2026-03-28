@@ -1,5 +1,6 @@
 spec_version: 1
 name: agent_safety_monitor
+version: "2.0.0"
 description: >
   Real-time AI Agent Safety Monitor. Trains RL agents to monitor an AI agent's
   actions one at a time, deciding whether to ALLOW, BLOCK, or FLAG each action.
