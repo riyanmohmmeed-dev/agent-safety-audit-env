@@ -1,0 +1,17 @@
+# AI Agent Safety Monitor — Runtime Dependencies
+# Install with: pip install -r requirements.txt
+
+# --- Core Framework ---
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+pydantic>=2.0.0
+
+# --- Semantic Grading (deterministic, offline, no API key) ---
+sentence-transformers>=2.2.0
+torch>=2.0.0
+
+# --- Baseline Inference (optional, for --openai flag) ---
+openai>=1.0.0
+
+# --- HTTP Client (for client.py demo) ---
+requests>=2.28.0
