@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "openenv-agent-safety-monitor"
 version = "2.0.0"
-description = "AI Agent Safety Monitor — OpenEnv RL environment for real-time monitoring of AI agent actions (allow/block/flag). 40 tasks, dense rewards, deterministic grading."
+description = "AI Agent Safety Monitor — OpenEnv RL environment for real-time monitoring of AI agent actions (allow/block/flag). 48 tasks, dense rewards, deterministic grading."
 readme = "README.md"
 requires-python = ">=3.10"
 
