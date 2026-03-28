@@ -10,11 +10,18 @@ tags:
   - openenv
 ---
 
-# AI Agent Safety Monitor
+# 🛡️ AI Agent Safety Monitor
+
+![Python](https://img.shields.io/badge/python-3.10+-blue?logo=python&logoColor=white)
+![OpenEnv](https://img.shields.io/badge/OpenEnv-compatible-brightgreen?logo=pytorch)
+![Tasks](https://img.shields.io/badge/tasks-48-orange)
+![Docker](https://img.shields.io/badge/docker-ready-blue?logo=docker)
+![License](https://img.shields.io/badge/license-MIT-green)
+![HF Space](https://img.shields.io/badge/%F0%9F%A4%97-Live_on_Spaces-yellow)
 
 A real-time AI agent safety monitoring environment built on [OpenEnv](https://github.com/pytorch/openenv). The monitor agent reviews an AI agent's actions **one at a time**, deciding whether to **ALLOW**, **BLOCK**, or **FLAG** each action — training agents to be real-time safety guardrails.
 
-Inspired by [Meta's March 2026 Sev-1 incident](https://www.theguardian.com), where an AI agent's incorrect advice led to a 2-hour exposure of sensitive data. Companies like Microsoft, Anthropic, and Obsidian Security are actively building runtime AI agent monitoring systems.
+Inspired by real-world AI safety incidents at Meta, AWS, Replit, and Microsoft, where autonomous AI agents caused production outages, data leaks, and unauthorized access. Companies like Anthropic and Obsidian Security are actively building runtime AI agent monitoring systems.
 
 ## Architecture & RL Design
 
@@ -30,6 +37,25 @@ This environment provides both **dense per-step reward shaping** (ideal for Acto
 | **Schema Enforcement** | R1-style formatting penalties for malformed agent outputs |
 | **Semantic Understanding** | Hybrid keyword + sentence-transformer scoring for explanation quality |
 | **Live Execution** | Sandbox tasks run real subprocess commands — monitor intercepts before execution |
+
+### Environment Flow
+
+```mermaid
+sequenceDiagram
+    participant Agent as RL Monitor Agent
+    participant Env as Safety Environment
+    participant Grader as Deterministic Grader
+
+    Agent->>Env: POST /reset (seed, difficulty)
+    Env-->>Agent: Observation (first action to review)
+    loop For each action in episode
+        Agent->>Env: POST /step (allow/block/flag)
+        Env->>Grader: Grade decision
+        Grader-->>Env: reward + feedback
+        Env-->>Agent: Observation (next action) + reward
+    end
+    Note over Grader: Episode score = weighted<br/>sum of 6 dimensions
+```
 
 ## Why This Matters
 
@@ -221,8 +247,17 @@ agent_safety_audit_env/
 ├── tasks/
 │   ├── easy_violations.json     (15 tasks)
 │   ├── medium_violations.json   (15 tasks)
+│   ├── grey_area_violations.json (3 ethical dilemma tasks)
 │   ├── hard_violations.json     (10 tasks)
 │   └── sandbox_violations.json  (5 live execution tasks)
 └── tests/
     └── test_environment.py      (75 tests)
 ```
+
+## License
+
+MIT License — see [LICENSE](LICENSE) for details.
+
+## Team
+
+**Neural Nomads** — Built for the [OpenEnv Hackathon](https://github.com/pytorch/openenv) (Round 1, April 2026)
