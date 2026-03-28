@@ -37,6 +37,8 @@ This environment provides both **dense per-step reward shaping** (ideal for Acto
 | **Schema Enforcement** | R1-style formatting penalties for malformed agent outputs |
 | **Semantic Understanding** | Hybrid keyword + sentence-transformer scoring for explanation quality |
 | **Live Execution** | Sandbox tasks run real subprocess commands — monitor intercepts before execution |
+| **Curriculum Learning** | Procedural task generation for unlimited training scenarios — no API keys needed |
+| **Filesystem Verification** | Sandbox verifies actual file state after execution — provably real, not simulated |
 
 ### Environment Flow
 
@@ -155,15 +157,26 @@ The `explanation_quality` dimension uses a **hybrid scoring strategy**:
 
 ## Tasks
 
-**48 scenarios** across 3 difficulty levels + ethical grey areas:
+**48 curated scenarios + unlimited procedurally generated tasks** across 3 difficulty levels:
 
-| Difficulty | Tasks | Characteristics |
-|:----------:|:-----:|:----------------|
-| Easy (15) | Single obvious violation | `/etc/passwd`, `rm -rf`, hardcoded keys |
-| Medium (15) | Subtle context-dependent | JWT in localStorage, self-approved PRs, k-anonymity |
-| Medium Grey Area (3) | **Ethical dilemma** — flag is correct, not block | Biased training data, dark patterns, worker displacement |
-| Hard (10) | **Multi-step chain** — must block 2-3 steps | GDPR log paradox, orphaned admin roles, PII in ML data |
-| Hard Sandbox (5) | **Live execution** — real commands run in sandbox | Env var dumps, PII in public reports, reverse shells |
+| Difficulty | Curated | Generated | Characteristics |
+|:----------:|:-------:|:---------:|:----------------|
+| Easy (15) | ✓ | ∞ | Single obvious violation — `/etc/passwd`, `rm -rf`, hardcoded keys |
+| Medium (15+3) | ✓ | ∞ | Subtle context-dependent + ethical grey areas |
+| Hard (10+5) | ✓ | ∞ | Multi-step chains + live sandbox execution |
+
+### Curriculum Learning (Procedural Task Generation)
+
+Beyond the 48 curated tasks, the environment supports **unlimited procedurally generated tasks** for curriculum learning. This prevents agents from memorizing fixed scenarios and ensures robust generalization.
+
+```python
+# Generate a unique task via API
+obs = env.reset(seed=42, options={"difficulty": "hard", "generated": True})
+
+# Or via HTTP: GET /generated_tasks?seed=42&difficulty=hard&count=10
+```
+
+Generation is **deterministic** — same seed always produces the same task. No API keys or external dependencies required.
 
 ### Live Sandbox Mode
 
@@ -171,6 +184,7 @@ The `explanation_quality` dimension uses a **hybrid scoring strategy**:
 - **ALLOW** → command actually executes via `subprocess.run(shell=False)`
 - **BLOCK** → command is intercepted before execution
 - **Security**: 5s timeout, `/tmp/sandbox/` jail, regex-based command blocklist, no `shell=True`, sanitized environment variables
+- **Filesystem Verification**: After execution, `verify_filesystem()` scans all created files for dangerous patterns (hardcoded credentials, destructive commands, exfiltration tools) — proving the sandbox is real, not simulated
 
 ## Baseline Scores
 
@@ -241,13 +255,14 @@ agent_safety_audit_env/
 │   └── agent_safety_audit_environment.py — Core engine
 ├── sandbox/
 │   ├── __init__.py
-│   └── executor.py    — Safe subprocess executor (no shell=True)
+│   └── executor.py    — Safe subprocess executor + filesystem verification
 ├── tasks/
-│   ├── easy_violations.json     (15 tasks)
-│   ├── medium_violations.json   (15 tasks)
+│   ├── easy_violations.json     (15 curated tasks)
+│   ├── medium_violations.json   (15 curated tasks)
 │   ├── grey_area_violations.json (3 ethical dilemma tasks)
-│   ├── hard_violations.json     (10 tasks)
-│   └── sandbox_violations.json  (5 live execution tasks)
+│   ├── hard_violations.json     (10 curated tasks)
+│   ├── sandbox_violations.json  (5 live execution tasks)
+│   └── generator.py             — Procedural task generator (∞ tasks)
 └── tests/
     └── test_environment.py      (75 tests)
 ```

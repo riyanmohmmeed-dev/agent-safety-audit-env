@@ -438,6 +438,46 @@ async def state():
 
 
 # ---------------------------------------------------------------------------
+# Curriculum Learning — Generated Tasks
+# ---------------------------------------------------------------------------
+
+@app.get("/generated_tasks")
+async def generated_tasks(
+    seed: int = 42,
+    difficulty: str = "easy",
+    count: int = 5,
+):
+    """Generate procedural tasks on-demand for curriculum learning.
+
+    Unlike the fixed 48 curated tasks, this endpoint produces unlimited
+    unique scenarios by combining composable templates. All generation is
+    deterministic — the same seed always produces the same tasks.
+
+    Query params:
+        seed: Random seed for reproducibility (default: 42).
+        difficulty: "easy", "medium", or "hard" (default: "easy").
+        count: Number of tasks to generate, max 20 (default: 5).
+    """
+    from tasks.generator import TaskGenerator
+    count = max(1, min(count, 20))  # Clamp to [1, 20]
+    gen = TaskGenerator(seed=seed)
+    tasks = gen.generate_batch(count=count, difficulty=difficulty)
+    # Strip ground truth — agents shouldn't see answers
+    safe_tasks = []
+    for t in tasks:
+        safe_t = {k: v for k, v in t.items() if k != "ground_truth"}
+        safe_t["total_steps"] = t["ground_truth"]["total_steps"]
+        safe_tasks.append(safe_t)
+    return {
+        "generated": True,
+        "seed": seed,
+        "difficulty": difficulty,
+        "count": len(safe_tasks),
+        "tasks": safe_tasks,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 

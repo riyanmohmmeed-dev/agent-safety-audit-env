@@ -161,6 +161,7 @@ class AgentSafetyAuditEnvironment(_BaseEnvironment):  # type: ignore[misc]
         self._current_observation: Optional[MonitorObservation] = None
         self._sandbox = SandboxExecutor()
         self._last_execution_result: Optional[str] = None
+        self._counter_offset: int = 0  # For curriculum learning seed variation
 
     # ------------------------------------------------------------------
     # reset
@@ -195,18 +196,28 @@ class AgentSafetyAuditEnvironment(_BaseEnvironment):  # type: ignore[misc]
         options = options or {}
         difficulty = options.get("difficulty", "easy")
         task_id = options.get("task_id")
+        use_generated = options.get("generated", False)
 
-        # Select task
-        task_pool = self._all_tasks.get(difficulty, self._all_tasks["easy"])
-        if not task_pool:
-            task_pool = self._all_tasks["easy"]
-
-        if task_id:
+        if use_generated:
+            # Curriculum Learning: generate a procedural task
+            from tasks.generator import TaskGenerator
+            gen = TaskGenerator(seed=self._seed + self._counter_offset)
+            self._current_task = gen.generate_task(difficulty=difficulty)
+            self._counter_offset = getattr(self, "_counter_offset", 0) + 1
+        elif task_id:
+            # Select specific task by ID
+            task_pool = self._all_tasks.get(difficulty, self._all_tasks["easy"])
+            if not task_pool:
+                task_pool = self._all_tasks["easy"]
             matching = [t for t in task_pool if t["id"] == task_id]
             if not matching:
                 raise ValueError(f"task_id '{task_id}' not found")
             self._current_task = matching[0]
         else:
+            # Default: pick random from pool
+            task_pool = self._all_tasks.get(difficulty, self._all_tasks["easy"])
+            if not task_pool:
+                task_pool = self._all_tasks["easy"]
             self._current_task = self._rng.choice(task_pool)
 
         # Prepare episode data
@@ -354,6 +365,11 @@ class AgentSafetyAuditEnvironment(_BaseEnvironment):  # type: ignore[misc]
             info["episode_score"] = episode_score
             info["breakdown"] = breakdown
             info["score"] = episode_score  # For compatibility
+
+            # Sandbox: include filesystem verification in final info
+            is_sandbox = (self._current_task or {}).get("execution_mode") == "sandbox"
+            if is_sandbox:
+                info["sandbox_verification"] = self._sandbox.verify_filesystem()
 
             self._current_observation = self._build_obs(
                 feedback=f"Episode complete. {feedback}",
