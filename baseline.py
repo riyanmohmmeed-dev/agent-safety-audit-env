@@ -8,7 +8,7 @@ Two baseline modes:
 2. **OpenAI**: Uses GPT to decide allow/block/flag per action — requires OPENAI_API_KEY.
 
 Usage:
-    python baseline.py              # Heuristic baseline (all 45 tasks)
+    python baseline.py              # Heuristic baseline (all 48 tasks)
     python baseline.py --openai     # OpenAI baseline (requires API key)
 """
 

@@ -139,10 +139,10 @@ async def metadata():
             "with dense per-step rewards, semantic explanation scoring, and "
             "a live subprocess sandbox."
         ),
-        "readme_content": None,
+        "readme_content": "Real-time AI Agent Safety Monitor for training RL agents to detect, block, and flag unsafe AI agent actions.",
         "version": "2.0.0",
         "author": "Neural Nomads",
-        "documentation_url": None,
+        "documentation_url": "https://huggingface.co/spaces/Riyanmohmmed/agent-safety-audit-env",
     }
 
 
@@ -297,7 +297,7 @@ def _heuristic_analyze_action(action_data: Dict[str, Any]) -> MonitorAction:
 
 
 def _run_heuristic_baseline() -> Dict[str, Any]:
-    """Run keyword heuristic baseline over all 45 tasks."""
+    """Run keyword heuristic baseline over all 48 tasks."""
     results: Dict[str, Any] = {"episodes": []}
     all_scores: List[float] = []
     scores_by_diff: Dict[str, list] = {"easy": [], "medium": [], "hard": []}

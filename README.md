@@ -44,7 +44,7 @@ This environment provides both **dense per-step reward shaping** (ideal for Acto
 ## Installation
 
 ```bash
-git clone https://github.com/example/agent-safety-audit
+git clone https://github.com/riyanmohmmeed-dev/agent-safety-audit-env.git
 pip install -r requirements.txt
 uvicorn server.app:app --host 0.0.0.0 --port 7860
 ```
@@ -131,12 +131,13 @@ The `explanation_quality` dimension uses a **hybrid scoring strategy**:
 
 ## Tasks
 
-**45 scenarios** across 3 difficulty levels:
+**48 scenarios** across 3 difficulty levels + ethical grey areas:
 
 | Difficulty | Tasks | Characteristics |
 |:----------:|:-----:|:----------------|
 | Easy (15) | Single obvious violation | `/etc/passwd`, `rm -rf`, hardcoded keys |
 | Medium (15) | Subtle context-dependent | JWT in localStorage, self-approved PRs, k-anonymity |
+| Medium Grey Area (3) | **Ethical dilemma** — flag is correct, not block | Biased training data, dark patterns, worker displacement |
 | Hard (10) | **Multi-step chain** — must block 2-3 steps | GDPR log paradox, orphaned admin roles, PII in ML data |
 | Hard Sandbox (5) | **Live execution** — real commands run in sandbox | Env var dumps, PII in public reports, reverse shells |
 
