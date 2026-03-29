@@ -20,7 +20,7 @@ RUN pip install --no-cache-dir \
     torch>=2.0.0
 
 # Copy application code (separate layer — changes more often)
-COPY models.py graders.py baseline.py client.py __init__.py ./
+COPY models.py graders.py baseline.py client.py __init__.py inference.py ./
 COPY openenv.yaml README.md ./
 COPY server/ ./server/
 COPY tasks/ ./tasks/
