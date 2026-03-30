@@ -384,12 +384,15 @@ async def baseline_trigger():
 # ---------------------------------------------------------------------------
 
 @app.post("/reset")
-async def reset(request: ResetRequest):
+async def reset(request: Optional[ResetRequest] = None):
     """Reset the environment to a new episode.
 
-    Body: {"seed": 42, "options": {"difficulty": "easy", "task_id": "easy_001"}}
+    Body (optional): {"seed": 42, "options": {"difficulty": "easy", "task_id": "easy_001"}}
+    If no body is provided, uses default seed and random difficulty.
     """
     try:
+        if request is None:
+            request = ResetRequest()
         obs = env.reset(seed=request.seed, options=request.options)
         return {"observation": obs.model_dump()}
     except Exception as e:
