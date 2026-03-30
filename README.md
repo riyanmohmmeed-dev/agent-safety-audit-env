@@ -234,7 +234,7 @@ python baseline.py --openai     # GPT-4o baseline (requires OPENAI_API_KEY)
 
 ```bash
 python -m pytest tests/ -v
-# 75 tests, 10 categories, ~26s (includes semantic model loading)
+# 78 tests, 11 categories, ~26s (includes semantic model loading)
 ```
 
 ## GRPO Training
@@ -286,7 +286,7 @@ agent_safety_audit_env/
 │   ├── train_local.py           — Local GRPO training (RTX 3050 / QLoRA)
 │   └── train.py                 — Colab GRPO training script
 └── tests/
-    └── test_environment.py      (75 tests)
+    └── test_environment.py      (78 tests)
 ```
 
 ## License
