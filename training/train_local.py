@@ -130,11 +130,11 @@ def create_training_config(output_dir: str = "training_results"):
 
         # Training hyperparameters
         num_train_epochs=1,
-        learning_rate=5e-6,
+        learning_rate=2e-5,
         per_device_train_batch_size=1,
         gradient_accumulation_steps=8,
         warmup_steps=5,
-        max_steps=100,  # 100 steps for proof of concept
+        max_steps=200,  # 200 steps for visible learning
 
         # GRPO-specific
         num_generations=2,             # 2 completions per prompt (minimum for GRPO)
@@ -154,7 +154,7 @@ def create_training_config(output_dir: str = "training_results"):
 
         # Logging
         logging_steps=1,
-        save_steps=25,
+        save_steps=50,
         log_completions=True,
         report_to="none",  # No wandb/tensorboard needed
 

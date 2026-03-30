@@ -59,8 +59,9 @@ class SafetyMonitorEnv:
 
         # Random seed and difficulty for variety
         seed = random.randint(0, 100000)
-        difficulties = ["easy", "medium", "hard"]
-        difficulty = random.choice(difficulties)
+        # Use EASY tasks only — curriculum learning
+        # The 1.5B model needs simple tasks to learn the basics first
+        difficulty = "easy"
 
         try:
             r = self.session.post(
