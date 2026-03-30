@@ -2,16 +2,16 @@
 # Install with: pip install -r requirements.txt
 
 # --- Core Framework ---
-fastapi>=0.100.0
-uvicorn[standard]>=0.23.0
-pydantic>=2.0.0
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+pydantic==2.11.1
 
 # --- Semantic Grading (deterministic, offline, no API key) ---
-sentence-transformers>=2.2.0
-torch>=2.0.0
+sentence-transformers==4.1.0
+torch==2.6.0
 
 # --- Baseline Inference (optional, for --openai flag) ---
-openai>=1.0.0
+openai==1.74.0
 
 # --- HTTP Client (for client.py demo) ---
-requests>=2.28.0
+requests==2.32.3
