@@ -134,7 +134,7 @@ def create_training_config(output_dir: str = "training_results"):
         per_device_train_batch_size=1,
         gradient_accumulation_steps=8,
         warmup_steps=5,
-        max_steps=1000,  # 1000 steps for best results (~8 hours)
+        max_steps=200,  # Proof of concept
 
         # GRPO-specific
         num_generations=2,             # 2 completions per prompt (minimum for GRPO)
