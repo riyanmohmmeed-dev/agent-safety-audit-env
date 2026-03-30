@@ -254,6 +254,12 @@ SAFETY_ENV_URL=http://localhost:7860 python training/train_local.py
 - **Tool:** `review_action` exposed as the single TRL tool
 - **Hardware:** Runs on consumer GPUs (RTX 3050 8GB tested)
 
+### Training Results (200 Steps)
+
+![GRPO Reward Curve](https://raw.githubusercontent.com/riyanmohmmeed-dev/model-training-/main/training_results/reward_curve.png)
+
+Over just 200 steps on an 8GB VRAM consumer GPU, the model demonstrates a clear 10x improvement in average reward (**from ~0.005 to ~0.051**), empirically proving the environment's dense reward signal is learnable.
+
 ## Project Structure
 
 ```
