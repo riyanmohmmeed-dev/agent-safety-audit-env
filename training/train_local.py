@@ -1,7 +1,7 @@
 """
 GRPO Training Script — LOCAL PC (RTX 3050 8GB / 16GB RAM)
 ==========================================================
-Trains Qwen3-0.6B with LoRA on the AI Agent Safety Monitor.
+Trains Qwen2.5-1.5B-Instruct with QLoRA (4-bit) on the AI Agent Safety Monitor.
 
 Key differences from Colab version:
   - NO vLLM (not needed, avoids memory contention)
@@ -46,7 +46,7 @@ def check_prerequisites():
             print("  pip install torch --index-url https://download.pytorch.org/whl/cu121")
             return False
         gpu_name = torch.cuda.get_device_name(0)
-        gpu_mem = torch.cuda.get_device_properties(0).total_mem / 1e9
+        gpu_mem = torch.cuda.get_device_properties(0).total_memory / 1e9
         print(f"  GPU: {gpu_name} ({gpu_mem:.1f} GB)")
     except ImportError:
         print("  ERROR: PyTorch not installed.")
@@ -66,6 +66,15 @@ def check_prerequisites():
         print(f"  PEFT version: {peft.__version__}")
     except ImportError:
         print("  ERROR: PEFT not installed. Run: pip install peft")
+        return False
+
+    # Check bitsandbytes (for 4-bit quantization)
+    try:
+        import bitsandbytes
+        print(f"  bitsandbytes version: {bitsandbytes.__version__}")
+    except ImportError:
+        print("  WARNING: bitsandbytes not installed. Run: pip install bitsandbytes")
+        print("  Will attempt training without 4-bit quantization.")
         return False
 
     # Check environment server
@@ -125,7 +134,7 @@ def create_training_config(output_dir: str = "training_results"):
         per_device_train_batch_size=1,
         gradient_accumulation_steps=8,
         warmup_steps=5,
-        max_steps=50,  # Just 50 steps for proof of concept
+        max_steps=100,  # 100 steps for proof of concept
 
         # GRPO-specific
         num_generations=2,             # 2 completions per prompt (minimum for GRPO)
@@ -155,7 +164,15 @@ def create_training_config(output_dir: str = "training_results"):
 
 
 def create_lora_config():
-    """Create LoRA config for memory-efficient training."""
+    """Create QLoRA config — 4-bit quantized base + LoRA adapter.
+
+    Memory budget with QLoRA on Qwen2.5-1.5B:
+      - Base model (4-bit): ~0.8 GB
+      - LoRA adapter: ~0.1 GB
+      - Optimizer states: ~1.0 GB
+      - Gradients + KV cache: ~2.0 GB
+      - Total: ~4 GB (fits in 8GB RTX 3050)
+    """
     from peft import LoraConfig
 
     return LoraConfig(
@@ -166,6 +183,37 @@ def create_lora_config():
         bias="none",
         task_type="CAUSAL_LM",
     )
+
+
+def load_model_quantized(model_name: str):
+    """Load model with 4-bit quantization (QLoRA) if bitsandbytes is available."""
+    from transformers import AutoModelForCausalLM, BitsAndBytesConfig
+    import torch
+
+    try:
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_use_double_quant=True,
+        )
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            quantization_config=bnb_config,
+            device_map="auto",
+            torch_dtype=torch.bfloat16,
+        )
+        print("  Loaded model with 4-bit quantization (QLoRA)")
+        return model
+    except Exception as e:
+        print(f"  WARNING: 4-bit quantization failed: {e}")
+        print("  Falling back to fp16 loading...")
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            device_map="auto",
+            torch_dtype=torch.float16,
+        )
+        return model
 
 
 def reward_func(environments, **kwargs):
@@ -231,7 +279,7 @@ def main():
     peft_config = create_lora_config()
 
     # Model
-    model_name = "Qwen/Qwen3-0.6B"
+    model_name = "Qwen/Qwen2.5-1.5B-Instruct"
     print(f"  Model: {model_name}")
     print(f"  Strategy: LoRA (r=16) + gradient checkpointing")
     print(f"  Max steps: {config.max_steps}")
@@ -264,12 +312,15 @@ def main():
         return rewards
 
     print("  Starting GRPO training...")
-    print("  (This will take 30-60 minutes on RTX 3050)")
+    print("  (This will take 60-120 minutes on RTX 3050)")
     print("=" * 60)
 
     try:
+        # Load model with 4-bit quantization
+        model = load_model_quantized(model_name)
+
         trainer = GRPOTrainer(
-            model=model_name,
+            model=model,
             reward_funcs=logging_reward_func,
             train_dataset=dataset,
             args=config,
