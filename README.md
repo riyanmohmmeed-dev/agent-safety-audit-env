@@ -237,6 +237,23 @@ python -m pytest tests/ -v
 # 75 tests, 10 categories, ~26s (includes semantic model loading)
 ```
 
+## GRPO Training
+
+This environment ships with a complete training pipeline for [TRL](https://huggingface.co/docs/trl)'s GRPO Trainer:
+
+```bash
+# Terminal 1: Start the environment server
+uvicorn server.app:app --host 0.0.0.0 --port 7860
+
+# Terminal 2: Run training (requires NVIDIA GPU)
+SAFETY_ENV_URL=http://localhost:7860 python training/train_local.py
+```
+
+- **Model:** Qwen2.5-1.5B-Instruct with QLoRA (4-bit quantization)
+- **Method:** GRPO with `environment_factory` pattern
+- **Tool:** `review_action` exposed as the single TRL tool
+- **Hardware:** Runs on consumer GPUs (RTX 3050 8GB tested)
+
 ## Project Structure
 
 ```
@@ -244,6 +261,7 @@ agent_safety_audit_env/
 ├── models.py          — MonitorAction / MonitorObservation (Pydantic)
 ├── graders.py         — Deterministic reward: semantic + keyword + schema
 ├── baseline.py        — Heuristic + OpenAI baselines
+├── inference.py       — LLM agent inference via OpenAI client
 ├── client.py          — EnvClient for programmatic access
 ├── requirements.txt   — All runtime dependencies
 ├── openenv.yaml       — OpenEnv metadata
@@ -263,6 +281,10 @@ agent_safety_audit_env/
 │   ├── hard_violations.json     (10 curated tasks)
 │   ├── sandbox_violations.json  (5 live execution tasks)
 │   └── generator.py             — Procedural task generator (∞ tasks)
+├── training/
+│   ├── safety_monitor_env.py    — TRL environment wrapper (GRPO)
+│   ├── train_local.py           — Local GRPO training (RTX 3050 / QLoRA)
+│   └── train.py                 — Colab GRPO training script
 └── tests/
     └── test_environment.py      (75 tests)
 ```
