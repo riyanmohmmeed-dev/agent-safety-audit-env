@@ -14,7 +14,7 @@ tags:
 
 ![Python](https://img.shields.io/badge/python-3.10+-blue?logo=python&logoColor=white)
 ![OpenEnv](https://img.shields.io/badge/OpenEnv-compatible-brightgreen?logo=pytorch)
-![Tasks](https://img.shields.io/badge/tasks-48-orange)
+![Tasks](https://img.shields.io/badge/tasks-65-orange)
 ![Docker](https://img.shields.io/badge/docker-ready-blue?logo=docker)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![HF Space](https://img.shields.io/badge/%F0%9F%A4%97-Live_on_Spaces-yellow)
