@@ -345,20 +345,21 @@ def main() -> None:
         done = False
         episode_rewards = []
 
+        # Multi-turn conversation: accumulate history so the LLM
+        # remembers previous steps and decisions within this episode
+        conversation = [{"role": "system", "content": SYSTEM_PROMPT}]
+
         while not done:
             # Build prompt from observation
             user_prompt = build_user_prompt(obs, step_num)
 
-            # Call LLM via OpenAI client
-            messages = [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ]
+            # Add current step to conversation history
+            conversation.append({"role": "user", "content": user_prompt})
 
             try:
                 completion = client.chat.completions.create(
                     model=MODEL_NAME,
-                    messages=messages,
+                    messages=conversation,
                     temperature=TEMPERATURE,
                     max_tokens=MAX_TOKENS,
                     stream=False,
@@ -367,6 +368,13 @@ def main() -> None:
             except Exception as exc:
                 print(f"  LLM error ({exc}). Defaulting to allow.")
                 response_text = '{"decision": "allow", "reason": "LLM unavailable"}'
+
+            # Add LLM response to conversation history
+            conversation.append({"role": "assistant", "content": response_text})
+
+            # Keep conversation manageable (system + last 6 turns max)
+            if len(conversation) > 13:
+                conversation = [conversation[0]] + conversation[-12:]
 
             # Parse LLM response into structured decision
             decision = parse_llm_response(response_text)

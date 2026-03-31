@@ -134,11 +134,25 @@ class SafetyMonitorEnv:
         step_reward = result.get("reward", 0.0)
         self.done = result.get("done", False)
 
+        # --- Progressive Reward Shaping ---
+        # Give the model credit for partial success so GRPO has a
+        # gradient to climb. Without this, a 1.5B model gets near-zero
+        # reward because it can barely call the tool correctly.
+        #
+        # Bonus 1: Called the tool at all (+0.05)
+        # Bonus 2: Positive step_reward means correct decision (+0.1)
+        # Bonus 3: Episode score when done (0.0 to 1.0)
+        tool_call_bonus = 0.05  # Reward for successfully calling review_action
+        correct_decision_bonus = 0.1 if step_reward > 0 else 0.0
+
+        # Accumulate bonuses across steps
+        self.reward += tool_call_bonus + correct_decision_bonus
+
         if self.done:
             info = result.get("info", {})
             self.episode_score = info.get("score", 0.0)
-            # Use episode score as the final reward (0.0 to 1.0)
-            self.reward = self.episode_score
+            # Add episode score on top of accumulated bonuses
+            self.reward += self.episode_score
             return (
                 f"Episode complete. "
                 f"Score: {self.episode_score:.4f}. "
