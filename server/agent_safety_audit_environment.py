@@ -129,6 +129,98 @@ def _derive_steps_to_flag(task: Dict[str, Any]) -> List[int]:
 
 
 # ---------------------------------------------------------------------------
+# Adaptive Curriculum — Dynamic Difficulty
+# ---------------------------------------------------------------------------
+
+class CurriculumTracker:
+    """Track agent performance and auto-adjust difficulty.
+
+    Implements curriculum learning: when an agent consistently performs well
+    on the current difficulty level, the environment promotes it to harder tasks.
+    Conversely, if performance drops, the environment demotes to easier tasks.
+
+    This is a proven RL technique used by OpenAI (Dota 2) and DeepMind
+    (StarCraft II) to accelerate agent learning.
+
+    Promotion rules:
+        - Average score > 0.7 over last 5 episodes → promote
+        - Average score < 0.3 over last 5 episodes → demote
+        - Difficulty order: easy → medium → hard
+    """
+
+    DIFFICULTY_ORDER: List[str] = ["easy", "medium", "hard"]
+    PROMOTE_THRESHOLD: float = 0.7
+    DEMOTE_THRESHOLD: float = 0.3
+    WINDOW_SIZE: int = 5
+
+    def __init__(self, start_difficulty: str = "easy") -> None:
+        self.current_level: int = max(
+            0, self.DIFFICULTY_ORDER.index(start_difficulty)
+            if start_difficulty in self.DIFFICULTY_ORDER else 0
+        )
+        self.recent_scores: List[float] = []
+        self.transitions: List[Dict[str, Any]] = []
+
+    @property
+    def difficulty(self) -> str:
+        """Current difficulty level."""
+        return self.DIFFICULTY_ORDER[self.current_level]
+
+    def record_score(self, score: float) -> Optional[str]:
+        """Record an episode score and check for difficulty transition.
+
+        Args:
+            score: Episode score in [0.0, 1.0].
+
+        Returns:
+            New difficulty string if a transition occurred, None otherwise.
+        """
+        self.recent_scores.append(score)
+        if len(self.recent_scores) < self.WINDOW_SIZE:
+            return None
+
+        window = self.recent_scores[-self.WINDOW_SIZE:]
+        avg = sum(window) / len(window)
+
+        old_level = self.current_level
+        if avg >= self.PROMOTE_THRESHOLD and self.current_level < 2:
+            self.current_level += 1
+        elif avg <= self.DEMOTE_THRESHOLD and self.current_level > 0:
+            self.current_level -= 1
+
+        if self.current_level != old_level:
+            transition = {
+                "from": self.DIFFICULTY_ORDER[old_level],
+                "to": self.difficulty,
+                "avg_score": round(avg, 4),
+                "episode_count": len(self.recent_scores),
+            }
+            self.transitions.append(transition)
+            logger.info(
+                f"Curriculum transition: {transition['from']} → {transition['to']} "
+                f"(avg={avg:.3f} over {self.WINDOW_SIZE} episodes)"
+            )
+            return self.difficulty
+        return None
+
+    def summary(self) -> Dict[str, Any]:
+        """Return curriculum state for the /state endpoint."""
+        return {
+            "enabled": True,
+            "current_difficulty": self.difficulty,
+            "episodes_completed": len(self.recent_scores),
+            "recent_avg": round(
+                sum(self.recent_scores[-self.WINDOW_SIZE:])
+                / max(1, min(self.WINDOW_SIZE, len(self.recent_scores))),
+                4,
+            ) if self.recent_scores else 0.0,
+            "transitions": self.transitions,
+            "promote_threshold": self.PROMOTE_THRESHOLD,
+            "demote_threshold": self.DEMOTE_THRESHOLD,
+        }
+
+
+# ---------------------------------------------------------------------------
 # Environment
 # ---------------------------------------------------------------------------
 
@@ -162,6 +254,7 @@ class AgentSafetyAuditEnvironment(_BaseEnvironment):  # type: ignore[misc]
         self._sandbox = SandboxExecutor()
         self._last_execution_result: Optional[str] = None
         self._counter_offset: int = 0  # For curriculum learning seed variation
+        self._curriculum: Optional[CurriculumTracker] = None
 
     # ------------------------------------------------------------------
     # reset
@@ -196,6 +289,13 @@ class AgentSafetyAuditEnvironment(_BaseEnvironment):  # type: ignore[misc]
         options = options or {}
         difficulty = options.get("difficulty", "easy")
         task_id = options.get("task_id")
+
+        # Adaptive Curriculum: override difficulty based on agent performance
+        if options.get("adaptive_difficulty"):
+            if self._curriculum is None:
+                start = options.get("start_difficulty", difficulty)
+                self._curriculum = CurriculumTracker(start_difficulty=start)
+            difficulty = self._curriculum.difficulty
         use_generated = options.get("generated", False)
 
         if use_generated:
@@ -366,6 +466,13 @@ class AgentSafetyAuditEnvironment(_BaseEnvironment):  # type: ignore[misc]
             info["breakdown"] = breakdown
             info["score"] = episode_score  # For compatibility
 
+            # Adaptive Curriculum: record score and check for promotion/demotion
+            if self._curriculum is not None:
+                transition = self._curriculum.record_score(episode_score)
+                if transition:
+                    info["curriculum_transition"] = transition
+                info["curriculum"] = self._curriculum.summary()
+
             # Sandbox: include filesystem verification in final info
             is_sandbox = (self._current_task or {}).get("execution_mode") == "sandbox"
             if is_sandbox:
@@ -402,7 +509,7 @@ class AgentSafetyAuditEnvironment(_BaseEnvironment):  # type: ignore[misc]
                 "total_episodes_completed": len(self._episode_scores),
             }
 
-        return {
+        state_dict = {
             "status": "active" if not self._episode_done else "done",
             "episode_active": not self._episode_done,
             "episode_id": self._episode_id,
@@ -415,6 +522,9 @@ class AgentSafetyAuditEnvironment(_BaseEnvironment):  # type: ignore[misc]
             "total_episodes_completed": len(self._episode_scores),
             "seed": self._seed,
         }
+        if self._curriculum is not None:
+            state_dict["curriculum"] = self._curriculum.summary()
+        return state_dict
 
     # ------------------------------------------------------------------
     # Utility
