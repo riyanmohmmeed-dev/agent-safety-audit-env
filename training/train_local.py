@@ -164,7 +164,7 @@ def create_training_config(output_dir: str = "training_results"):
         per_device_train_batch_size=1,
         gradient_accumulation_steps=8,
         warmup_steps=5,
-        max_steps=200,  # Proof of concept
+        max_steps=500,  # Extended training for stronger convergence
 
         # GRPO-specific
         num_generations=2,             # 2 completions per prompt (minimum for GRPO)
@@ -299,7 +299,7 @@ def main():
     output_dir = "training_results"
 
     # Create dataset
-    dataset = create_dataset(size=50)
+    dataset = create_dataset(size=100)
     print(f"\n  Dataset: {len(dataset)} prompts")
 
     # Create config
