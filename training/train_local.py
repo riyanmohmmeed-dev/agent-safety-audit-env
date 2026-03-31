@@ -160,9 +160,9 @@ def create_training_config(output_dir: str = "training_results"):
 
         # Training hyperparameters
         num_train_epochs=1,
-        learning_rate=2e-5,
+        learning_rate=5e-5,  # Aggressive LR — 500 steps is short, need fast learning
         per_device_train_batch_size=1,
-        gradient_accumulation_steps=8,
+        gradient_accumulation_steps=4,  # Smaller accumulation = more frequent updates
         warmup_steps=5,
         max_steps=500,  # Extended training for stronger convergence
 
