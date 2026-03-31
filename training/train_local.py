@@ -163,7 +163,7 @@ def create_training_config(output_dir: str = "training_results"):
         learning_rate=5e-5,  # Aggressive LR — 500 steps is short, need fast learning
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,  # Smaller accumulation = more frequent updates
-        warmup_steps=5,
+        warmup_steps=10,  # Stabilize early training with aggressive LR
         max_steps=500,  # Extended training for stronger convergence
 
         # GRPO-specific
@@ -194,22 +194,25 @@ def create_training_config(output_dir: str = "training_results"):
 
 
 def create_lora_config():
-    """Create QLoRA config — 4-bit quantized base + LoRA adapter.
+    """Create maxed-out QLoRA config — 4-bit quantized base + aggressive LoRA.
 
-    Memory budget with QLoRA on Qwen2.5-1.5B:
+    Memory budget with QLoRA on Qwen2.5-1.5B (r=32, attn+MLP):
       - Base model (4-bit): ~0.8 GB
-      - LoRA adapter: ~0.1 GB
-      - Optimizer states: ~1.0 GB
-      - Gradients + KV cache: ~2.0 GB
-      - Total: ~4 GB (fits in 8GB RTX 3050)
+      - LoRA adapter (r=32, 7 modules): ~0.3 GB
+      - Optimizer states: ~1.5 GB
+      - Gradients + KV cache: ~3.0 GB
+      - Total: ~5.6 GB (tight fit in 8GB RTX 3050)
     """
     from peft import LoraConfig
 
     return LoraConfig(
-        r=16,
-        lora_alpha=32,
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
-        lora_dropout=0.05,
+        r=32,                # Double rank = 4x more trainable params
+        lora_alpha=64,       # 2x rank for stable scaling
+        target_modules=[     # Attention + MLP layers = maximum learning capacity
+            "q_proj", "k_proj", "v_proj", "o_proj",
+            "gate_proj", "up_proj", "down_proj",
+        ],
+        lora_dropout=0.0,    # No dropout = every param trains every step
         bias="none",
         task_type="CAUSAL_LM",
     )
