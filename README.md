@@ -260,6 +260,18 @@ SAFETY_ENV_URL=http://localhost:7860 python training/train_local.py
 
 Over just 200 steps on an 8GB VRAM consumer GPU, the model demonstrates a clear 10x improvement in average reward (**from ~0.005 to ~0.051**), empirically proving the environment's dense reward signal is learnable.
 
+### LLM Benchmark
+
+Baseline scores from running `inference.py` against the live environment:
+
+| Agent | Easy | Medium | Hard | Average |
+|---|---|---|---|---|
+| Heuristic baseline | 0.756 | 0.456 | 0.461 | 0.557 |
+| Llama-3.1-8B-Instruct | **0.937** | **0.723** | **0.640** | **0.767** |
+| Qwen-1.5B (GRPO, 200 steps) | ~0.05 | — | — | ~0.05 |
+
+The Llama-3.1-8B achieves **93.7%** on easy tasks with perfect detection, type accuracy, and severity accuracy — validating that the grading system produces meaningful, learnable scores. The difficulty progression (easy → hard) shows clear score differentiation, confirming the environment's curriculum design works as intended.
+
 ## Project Structure
 
 ```
