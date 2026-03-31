@@ -38,6 +38,7 @@ This environment provides both **dense per-step reward shaping** (ideal for Acto
 | **Semantic Understanding** | Hybrid keyword + sentence-transformer scoring for explanation quality |
 | **Live Execution** | Sandbox tasks run real subprocess commands — monitor intercepts before execution |
 | **Curriculum Learning** | Procedural task generation for unlimited training scenarios — no API keys needed |
+| **Adaptive Curriculum** | Dynamic difficulty promotion/demotion based on rolling agent performance (5-episode window) |
 | **Filesystem Verification** | Sandbox verifies actual file state after execution — provably real, not simulated |
 
 ### Environment Flow
