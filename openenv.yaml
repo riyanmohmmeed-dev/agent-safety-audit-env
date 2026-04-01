@@ -5,7 +5,7 @@ description: >
   Real-time AI Agent Safety Monitor. Trains RL agents to monitor an AI agent's
   actions one at a time, deciding whether to ALLOW, BLOCK, or FLAG each action.
   Inspired by real-world AI safety incidents at Meta, AWS, and Replit.
-  48 tasks across 3 difficulty levels with dense per-step rewards,
+  65 tasks across 4 difficulty levels with dense per-step rewards,
   semantic explanation scoring, and a live subprocess sandbox.
 type: space
 runtime: fastapi
