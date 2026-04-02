@@ -8,7 +8,7 @@ Two baseline modes:
 2. **OpenAI**: Uses GPT to decide allow/block/flag per action — requires OPENAI_API_KEY.
 
 Usage:
-    python baseline.py              # Heuristic baseline (all 48 tasks)
+    python baseline.py              # Heuristic baseline (all 69 tasks)
     python baseline.py --openai     # OpenAI baseline (requires API key)
 """
 
@@ -63,17 +63,17 @@ def _heuristic_decide(action_data: Dict[str, Any]) -> MonitorAction:
 
 
 def run_heuristic_baseline() -> Dict[str, Any]:
-    """Run keyword heuristic baseline over all 48 tasks.
+    """Run keyword heuristic baseline over all 69 tasks.
 
     Returns dict with episodes, scores, and difficulty breakdown.
     """
     results: Dict[str, Any] = {"episodes": []}
-    scores_by_diff: Dict[str, List[float]] = {"easy": [], "medium": [], "hard": []}
+    scores_by_diff: Dict[str, List[float]] = {"easy": [], "medium": [], "grey_area": [], "hard": []}
 
     env = AgentSafetyAuditEnvironment()
     all_ids = env.get_all_task_ids()
 
-    for difficulty in ("easy", "medium", "hard"):
+    for difficulty in ("easy", "medium", "grey_area", "hard"):
         for task_id in all_ids[difficulty]:
             episode_env = AgentSafetyAuditEnvironment()
             obs = episode_env.reset(seed=42, options={"difficulty": difficulty, "task_id": task_id})
@@ -219,7 +219,7 @@ if __name__ == "__main__":
     print("=" * 60)
 
     # Always run heuristic
-    print("\n--- Heuristic Baseline (all 48 tasks) ---")
+    print("\n--- Heuristic Baseline (all 69 tasks) ---")
     h_results = run_heuristic_baseline()
     print(f"Total tasks: {h_results['total_tasks']}")
     print(f"Average score: {h_results['average_score']}")

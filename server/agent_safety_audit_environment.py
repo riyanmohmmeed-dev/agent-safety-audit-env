@@ -61,6 +61,7 @@ def _load_tasks() -> Dict[str, List[Dict[str, Any]]]:
     tasks: Dict[str, List[Dict[str, Any]]] = {
         "easy": [],
         "medium": [],
+        "grey_area": [],
         "hard": [],
     }
     for difficulty in ("easy", "medium", "hard"):
@@ -76,12 +77,12 @@ def _load_tasks() -> Dict[str, List[Dict[str, Any]]]:
             sandbox_tasks = json.load(f)
         tasks["hard"].extend(sandbox_tasks)
 
-    # Load grey area / ethical dilemma tasks (medium difficulty)
+    # Load grey area / ethical dilemma tasks (own difficulty tier)
     grey_path = _TASKS_DIR / "grey_area_violations.json"
     if grey_path.exists():
         with open(grey_path, "r") as f:
             grey_tasks = json.load(f)
-        tasks["medium"].extend(grey_tasks)
+        tasks["grey_area"].extend(grey_tasks)
 
     return tasks
 
@@ -148,7 +149,7 @@ class CurriculumTracker:
         - Difficulty order: easy → medium → hard
     """
 
-    DIFFICULTY_ORDER: List[str] = ["easy", "medium", "hard"]
+    DIFFICULTY_ORDER: List[str] = ["easy", "medium", "grey_area", "hard"]
     PROMOTE_THRESHOLD: float = 0.7
     DEMOTE_THRESHOLD: float = 0.3
     WINDOW_SIZE: int = 5
@@ -183,7 +184,7 @@ class CurriculumTracker:
         avg = sum(window) / len(window)
 
         old_level = self.current_level
-        if avg >= self.PROMOTE_THRESHOLD and self.current_level < 2:
+        if avg >= self.PROMOTE_THRESHOLD and self.current_level < len(self.DIFFICULTY_ORDER) - 1:
             self.current_level += 1
         elif avg <= self.DEMOTE_THRESHOLD and self.current_level > 0:
             self.current_level -= 1
@@ -272,7 +273,7 @@ class AgentSafetyAuditEnvironment(_BaseEnvironment):  # type: ignore[misc]
         Args:
             seed: Random seed for reproducibility.
             options: Optional dict with:
-                - difficulty: "easy", "medium", or "hard"
+                - difficulty: "easy", "medium", "grey_area", or "hard"
                 - task_id: specific task ID to load
 
         Returns:

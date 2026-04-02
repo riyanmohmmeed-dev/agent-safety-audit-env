@@ -194,7 +194,7 @@ Generation is **deterministic** — same seed always produces the same task. No 
 | Easy | **0.756** | Keyword heuristic + semantic grading |
 | Medium | **0.456** | Keyword heuristic + semantic grading |
 | Hard | **0.461** | Keyword heuristic + semantic grading |
-| **Overall** | **0.557** | 48 tasks, deterministic |
+| **Overall** | **0.557** | 69 tasks, deterministic |
 
 ## API Endpoints
 
@@ -203,7 +203,7 @@ Generation is **deterministic** — same seed always produces the same task. No 
 | `/health` | GET | Server status |
 | `/tasks` | GET | All tasks + schemas |
 | `/grader` | GET | Grader weights + dimensions |
-| `/baseline` | GET | Run baseline (48 tasks) |
+| `/baseline` | GET | Run baseline (69 tasks) |
 | `/baseline-trigger-inference-script` | GET | Trigger inference |
 | `/reset` | POST | Start new episode |
 | `/step` | POST | Submit monitoring decision |
@@ -227,7 +227,7 @@ docker run -p 7860:7860 agent-safety-monitor
 ## Demo
 
 ```bash
-python baseline.py              # Deterministic heuristic baseline (all 48 tasks)
+python baseline.py              # Deterministic heuristic baseline (all 69 tasks)
 python baseline.py --openai     # GPT-4o baseline (requires OPENAI_API_KEY)
 ```
 

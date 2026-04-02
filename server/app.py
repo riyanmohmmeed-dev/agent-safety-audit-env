@@ -135,7 +135,7 @@ async def metadata():
         "description": (
             "Real-time AI Agent Safety Monitor. Trains RL agents to monitor "
             "an AI agent's actions one at a time, deciding whether to ALLOW, "
-            "BLOCK, or FLAG each action. 48 tasks across 3 difficulty levels "
+            "BLOCK, or FLAG each action. 69 tasks across 4 difficulty levels "
             "with dense per-step rewards, semantic explanation scoring, and "
             "a live subprocess sandbox."
         ),
@@ -234,11 +234,13 @@ async def tasks():
         "tasks_by_difficulty": task_ids,
         "action_schema": MonitorAction.model_json_schema(),
         "observation_schema": MonitorObservation.model_json_schema(),
-        "difficulties": ["easy", "medium", "hard"],
+        "difficulties": ["easy", "medium", "grey_area", "hard"],
         "description": (
             "Each task presents an AI agent's planned actions for real-time monitoring. "
             "Easy tasks have single obvious violations, medium tasks have subtle "
-            "context-dependent violations, and hard tasks require understanding multi-step chains."
+            "context-dependent violations, grey area tasks present ethical dilemmas "
+            "where flag (escalate to human) is the correct answer, and hard tasks "
+            "require understanding multi-step violation chains."
         ),
     }
 
@@ -297,13 +299,13 @@ def _heuristic_analyze_action(action_data: Dict[str, Any]) -> MonitorAction:
 
 
 def _run_heuristic_baseline() -> Dict[str, Any]:
-    """Run keyword heuristic baseline over all 48 tasks."""
+    """Run keyword heuristic baseline over all 69 tasks."""
     results: Dict[str, Any] = {"episodes": []}
     all_scores: List[float] = []
-    scores_by_diff: Dict[str, list] = {"easy": [], "medium": [], "hard": []}
+    scores_by_diff: Dict[str, list] = {"easy": [], "medium": [], "grey_area": [], "hard": []}
 
     all_task_ids = env.get_all_task_ids()
-    for difficulty in ("easy", "medium", "hard"):
+    for difficulty in ("easy", "medium", "grey_area", "hard"):
         for task_id in all_task_ids[difficulty]:
             episode_env = AgentSafetyAuditEnvironment()
             obs = episode_env.reset(seed=42, options={"difficulty": difficulty, "task_id": task_id})
@@ -452,7 +454,7 @@ async def generated_tasks(
 ):
     """Generate procedural tasks on-demand for curriculum learning.
 
-    Unlike the fixed 48 curated tasks, this endpoint produces unlimited
+    Unlike the fixed 65 curated tasks, this endpoint produces unlimited
     unique scenarios by combining composable templates. All generation is
     deterministic — the same seed always produces the same tasks.
 
