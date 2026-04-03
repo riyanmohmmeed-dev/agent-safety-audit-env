@@ -197,38 +197,40 @@ def _build_action_card() -> str:
 
     return f'''
     <div style="position:relative;">
-        <!-- Progress bar -->
-        <div style="height:3px; background:#1e293b; border-radius:2px; margin-bottom:24px;">
-            <div style="height:3px; background:linear-gradient(90deg, #06b6d4, #8b5cf6); border-radius:2px; width:{progress_pct}%; transition:width 0.5s ease;"></div>
-        </div>
-
         <!-- Header -->
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <div>
-                <span style="font-size:13px; color:#64748b; font-weight:500;">{step_label}</span>
-                <span style="margin-left:12px;">{_difficulty_badge(ui_state.difficulty)}</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <span style="font-size:13px; color:#64748b; font-weight:700; letter-spacing:0.5px;">STEP {ui_state.current_step} OF {ui_state.total_steps}</span>
+                {_difficulty_badge(ui_state.difficulty)}
             </div>
             <span style="font-size:12px; color:#475569; font-family:monospace;">{ui_state.task_id}</span>
         </div>
 
+        <!-- Progress bar (Glowing) -->
+        <div style="height:4px; background:#1e293b; border-radius:2px; margin-bottom:24px; overflow:hidden;">
+            <div style="height:100%; background:linear-gradient(90deg, #06b6d4, #8b5cf6); width:{progress_pct}%; transition:width 0.5s cubic-bezier(0.4, 0, 0.2, 1); box-shadow:0 0 10px rgba(139,92,246,0.5);"></div>
+        </div>
+
         <!-- Decision history dots -->
-        <div style="margin-bottom:20px; min-height:16px;">{dots}</div>
+        <div style="margin-bottom:20px; min-height:16px; display:flex; gap:6px; align-items:center;">{dots}</div>
 
-        <!-- Action Card -->
-        <div style="background:#0f172a; border:1px solid #1e293b; border-radius:16px; padding:28px; margin-bottom:16px;">
-
+        <!-- Premium Action Card -->
+        <div style="background:linear-gradient(145deg, #0f172a, #020617); border:1px solid rgba(255,255,255,0.05); border-radius:16px; padding:32px; margin-bottom:16px; box-shadow:0 10px 40px -10px rgba(0,0,0,0.5); position:relative; overflow:hidden;">
+            <!-- Subtle background glow behind action -->
+            <div style="position:absolute; top:-20px; left:-20px; width:100px; height:100px; background:{action_color}; filter:blur(60px); opacity:0.1; pointer-events:none;"></div>
+            
             <!-- Action type badge -->
-            <div style="margin-bottom:16px;">
-                <span style="background:{action_color}20; color:{action_color}; padding:5px 12px; border-radius:8px; font-size:12px; font-weight:600; font-family:monospace; letter-spacing:0.5px;">{action.action}</span>
+            <div style="margin-bottom:24px; position:relative;">
+                <span style="background:{action_color}15; color:{action_color}; border:1px solid {action_color}30; padding:6px 14px; border-radius:8px; font-size:12px; font-weight:700; font-family:'JetBrains Mono', monospace; letter-spacing:0.5px; box-shadow:0 4px 12px {action_color}10;">{action.action}</span>
             </div>
 
-            <!-- Target -->
-            <div style="font-family:'JetBrains Mono', 'Fira Code', monospace; font-size:15px; color:#e2e8f0; margin-bottom:16px; word-break:break-all; line-height:1.5;">
+            <!-- Target (Code style) -->
+            <div style="background:rgba(0,0,0,0.2); border-left:3px solid {action_color}; padding:14px 18px; border-radius:4px 8px 8px 4px; font-family:'JetBrains Mono', 'Fira Code', monospace; font-size:14px; color:#f8fafc; margin-bottom:24px; word-break:break-all; line-height:1.6;">
                 {action.target}
             </div>
 
             <!-- Details -->
-            <div style="font-size:14px; color:#94a3b8; line-height:1.7;">
+            <div style="font-size:15px; color:#94a3b8; line-height:1.7; font-weight:400;">
                 {action.details}
             </div>
         </div>
@@ -240,42 +242,50 @@ def _build_action_card() -> str:
 def _build_context_panel() -> str:
     """Build the context side panel."""
     rules_html = "".join(
-        f'<li style="margin-bottom:8px; color:#94a3b8; font-size:13px; line-height:1.5;">{rule}</li>'
+        f'<li style="margin-bottom:10px; color:#94a3b8; font-size:13px; line-height:1.6; padding-left:20px; position:relative;">'
+        f'<span style="position:absolute; left:0; top:6px; width:6px; height:6px; border-radius:50%; background:#38bdf8;"></span>{rule}</li>'
         for rule in ui_state.policy_rules
     )
 
     perms_html = "".join(
-        f'<span style="background:#1e293b; color:#94a3b8; padding:3px 10px; border-radius:6px; font-size:12px; margin:2px 4px 2px 0; display:inline-block; font-family:monospace;">{p}</span>'
+        f'<span style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#cbd5e1; padding:4px 12px; border-radius:8px; font-size:12px; margin:0 6px 6px 0; display:inline-block; font-family:monospace; box-shadow:0 2px 4px rgba(0,0,0,0.1);">{p}</span>'
         for p in ui_state.permissions
     )
 
     risk_colors = {"low": "#22c55e", "medium": "#f59e0b", "high": "#f97316", "critical": "#ef4444"}
-    risk_c = risk_colors.get(ui_state.risk_level, "#6b7280")
+    if not ui_state.risk_level:
+        risk_c = "#64748b"
+        risk_txt = "NOT ASSESSED"
+    else:
+        risk_c = risk_colors.get(ui_state.risk_level, "#64748b")
+        risk_txt = ui_state.risk_level.upper()
+        
+    risk_badge = f'<span style="background:{risk_c}15; border:1px solid {risk_c}50; color:{risk_c}; padding:4px 10px; border-radius:6px; font-weight:700; font-size:11px; letter-spacing:0.5px;">{risk_txt}</span>'
 
     return f'''
-    <div style="font-size:14px;">
+    <div style="font-size:14px; background:#0f172a; border:1px solid #1e293b; border-radius:16px; padding:24px; box-shadow:0 4px 20px rgba(0,0,0,0.2);">
         <!-- Agent Task -->
-        <div style="margin-bottom:20px;">
-            <div style="font-size:11px; color:#475569; font-weight:600; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:8px;">Mission</div>
-            <div style="color:#cbd5e1; line-height:1.6;">{ui_state.agent_task}</div>
+        <div style="margin-bottom:24px;">
+            <div style="font-size:11px; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:8px; display:flex; align-items:center; gap:6px;"><span style="color:#38bdf8;">🎯</span> MISSION</div>
+            <div style="color:#f8fafc; font-size:15px; font-weight:500; line-height:1.6;">{ui_state.agent_task}</div>
         </div>
 
         <!-- Risk Level -->
-        <div style="margin-bottom:20px;">
-            <div style="font-size:11px; color:#475569; font-weight:600; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:8px;">Risk Level</div>
-            <span style="color:{risk_c}; font-weight:700; font-size:13px;">{ui_state.risk_level.upper() if ui_state.risk_level else "—"}</span>
+        <div style="margin-bottom:24px;">
+            <div style="font-size:11px; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:10px;">RISK LEVEL</div>
+            <div>{risk_badge}</div>
         </div>
 
         <!-- Permissions -->
-        <div style="margin-bottom:20px;">
-            <div style="font-size:11px; color:#475569; font-weight:600; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:8px;">Permissions</div>
-            <div>{perms_html}</div>
+        <div style="margin-bottom:24px;">
+            <div style="font-size:11px; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:10px;">PERMISSIONS</div>
+            <div>{perms_html if perms_html else '<span style="color:#475569; font-size:13px; font-style:italic;">No explicitly granted permissions</span>'}</div>
         </div>
 
         <!-- Policy Rules -->
         <div>
-            <div style="font-size:11px; color:#475569; font-weight:600; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:8px;">Policy Rules</div>
-            <ul style="padding-left:16px; margin:0;">{rules_html}</ul>
+            <div style="font-size:11px; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:10px;">POLICY RULES</div>
+            <ul style="list-style-type:none; padding:0; margin:0;">{rules_html if rules_html else '<li style="color:#475569; font-size:13px; font-style:italic;">No applicable policies</li>'}</ul>
         </div>
     </div>'''
 
@@ -493,17 +503,17 @@ CUSTOM_CSS = """
     border-color: #334155 !important;
 }
 
-.diff-easy { color: #22c55e !important; }
-.diff-easy:hover { background: rgba(34,197,94,0.1) !important; border-color: #22c55e !important; box-shadow: 0 0 20px rgba(34,197,94,0.2) !important; }
+.diff-easy { color: #22c55e !important; background: rgba(34,197,94,0.05) !important; border-color: rgba(34,197,94,0.2) !important; }
+.diff-easy:hover { background: rgba(34,197,94,0.15) !important; border-color: #22c55e !important; box-shadow: 0 0 20px rgba(34,197,94,0.2) !important; }
 
-.diff-medium { color: #f59e0b !important; }
-.diff-medium:hover { background: rgba(245,158,11,0.1) !important; border-color: #f59e0b !important; box-shadow: 0 0 20px rgba(245,158,11,0.2) !important; }
+.diff-medium { color: #f59e0b !important; background: rgba(245,158,11,0.05) !important; border-color: rgba(245,158,11,0.2) !important; }
+.diff-medium:hover { background: rgba(245,158,11,0.15) !important; border-color: #f59e0b !important; box-shadow: 0 0 20px rgba(245,158,11,0.2) !important; }
 
-.diff-grey { color: #a855f7 !important; }
-.diff-grey:hover { background: rgba(168,85,247,0.1) !important; border-color: #a855f7 !important; box-shadow: 0 0 20px rgba(168,85,247,0.2) !important; }
+.diff-grey { color: #a855f7 !important; background: rgba(168,85,247,0.05) !important; border-color: rgba(168,85,247,0.2) !important; }
+.diff-grey:hover { background: rgba(168,85,247,0.15) !important; border-color: #a855f7 !important; box-shadow: 0 0 20px rgba(168,85,247,0.2) !important; }
 
-.diff-hard { color: #ef4444 !important; }
-.diff-hard:hover { background: rgba(239,68,68,0.1) !important; border-color: #ef4444 !important; box-shadow: 0 0 20px rgba(239,68,68,0.2) !important; }
+.diff-hard { color: #ef4444 !important; background: rgba(239,68,68,0.05) !important; border-color: rgba(239,68,68,0.2) !important; }
+.diff-hard:hover { background: rgba(239,68,68,0.15) !important; border-color: #ef4444 !important; box-shadow: 0 0 20px rgba(239,68,68,0.2) !important; }
 
 /* === DECISION BUTTONS with pulse animation === */
 @keyframes pulseGreen {
