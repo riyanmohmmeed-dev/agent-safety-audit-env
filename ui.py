@@ -721,9 +721,9 @@ def create_ui() -> gr.Blocks:
                             )
 
                     with gr.Row():
-                        allow_btn = gr.Button("✓  ALLOW", elem_classes=["allow-btn"], scale=1)
-                        block_btn = gr.Button("✗  BLOCK", elem_classes=["block-btn"], scale=1)
-                        flag_btn = gr.Button("⚑  FLAG", elem_classes=["flag-btn"], scale=1)
+                        allow_btn = gr.Button("✓  ALLOW", elem_classes=["allow-btn"], scale=1, min_width=10)
+                        block_btn = gr.Button("✗  BLOCK", elem_classes=["block-btn"], scale=1, min_width=10)
+                        flag_btn = gr.Button("⚑  FLAG", elem_classes=["flag-btn"], scale=1, min_width=10)
 
             # Right: Context Panel (1/3 width)
             with gr.Column(scale=1):
