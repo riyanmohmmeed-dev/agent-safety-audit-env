@@ -682,7 +682,7 @@ def create_ui() -> gr.Blocks:
                 )
 
                 # Decision buttons
-                with gr.Group(visible=False) as decision_group:
+                with gr.Column(visible=False) as decision_group:
                     reason_input = gr.Textbox(
                         placeholder="Why are you making this decision? (optional but improves score)",
                         label="Reason",
@@ -691,7 +691,7 @@ def create_ui() -> gr.Blocks:
                     )
 
                     # Block-specific options (hidden by default)
-                    with gr.Group(visible=False) as block_opts:
+                    with gr.Column(visible=False) as block_opts:
                         with gr.Row():
                             violation_dd = gr.Dropdown(
                                 choices=[
