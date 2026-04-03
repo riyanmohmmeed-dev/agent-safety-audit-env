@@ -414,15 +414,36 @@ def toggle_block_opts(visible: bool):
 
 CUSTOM_CSS = """
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 * {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
 }
 
+/* === ANIMATED BACKGROUND === */
 .gradio-container {
     background: #020617 !important;
     max-width: 1200px !important;
     margin: 0 auto !important;
+    position: relative;
+}
+
+.gradio-container::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background:
+        radial-gradient(ellipse at 20% 50%, rgba(6, 182, 212, 0.05) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.05) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 80%, rgba(34, 197, 94, 0.03) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+    animation: bgPulse 8s ease-in-out infinite alternate;
+}
+
+@keyframes bgPulse {
+    0% { opacity: 0.6; }
+    100% { opacity: 1; }
 }
 
 .dark {
@@ -438,7 +459,7 @@ CUSTOM_CSS = """
     border: none !important;
 }
 
-/* Difficulty buttons */
+/* === DIFFICULTY BUTTONS with glow === */
 .diff-btn {
     border: 1px solid #1e293b !important;
     border-radius: 12px !important;
@@ -446,29 +467,58 @@ CUSTOM_CSS = """
     font-weight: 600 !important;
     font-size: 13px !important;
     letter-spacing: 0.5px !important;
-    transition: all 0.2s ease !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     background: #0f172a !important;
     min-width: 100px !important;
+    position: relative;
+    overflow: hidden;
+}
+
+.diff-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 0; height: 0;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+    transform: translate(-50%,-50%);
+    transition: width 0.4s, height 0.4s;
+}
+.diff-btn:hover::after {
+    width: 200px; height: 200px;
 }
 
 .diff-btn:hover {
-    transform: translateY(-1px) !important;
+    transform: translateY(-2px) scale(1.02) !important;
     border-color: #334155 !important;
 }
 
 .diff-easy { color: #22c55e !important; }
-.diff-easy:hover { background: #22c55e15 !important; border-color: #22c55e50 !important; }
+.diff-easy:hover { background: rgba(34,197,94,0.1) !important; border-color: #22c55e !important; box-shadow: 0 0 20px rgba(34,197,94,0.2) !important; }
 
 .diff-medium { color: #f59e0b !important; }
-.diff-medium:hover { background: #f59e0b15 !important; border-color: #f59e0b50 !important; }
+.diff-medium:hover { background: rgba(245,158,11,0.1) !important; border-color: #f59e0b !important; box-shadow: 0 0 20px rgba(245,158,11,0.2) !important; }
 
 .diff-grey { color: #a855f7 !important; }
-.diff-grey:hover { background: #a855f715 !important; border-color: #a855f750 !important; }
+.diff-grey:hover { background: rgba(168,85,247,0.1) !important; border-color: #a855f7 !important; box-shadow: 0 0 20px rgba(168,85,247,0.2) !important; }
 
 .diff-hard { color: #ef4444 !important; }
-.diff-hard:hover { background: #ef444415 !important; border-color: #ef444450 !important; }
+.diff-hard:hover { background: rgba(239,68,68,0.1) !important; border-color: #ef4444 !important; box-shadow: 0 0 20px rgba(239,68,68,0.2) !important; }
 
-/* Decision buttons */
+/* === DECISION BUTTONS with pulse animation === */
+@keyframes pulseGreen {
+    0%, 100% { box-shadow: 0 4px 14px rgba(34, 197, 94, 0.25); }
+    50% { box-shadow: 0 4px 24px rgba(34, 197, 94, 0.4); }
+}
+@keyframes pulseRed {
+    0%, 100% { box-shadow: 0 4px 14px rgba(239, 68, 68, 0.25); }
+    50% { box-shadow: 0 4px 24px rgba(239, 68, 68, 0.4); }
+}
+@keyframes pulseAmber {
+    0%, 100% { box-shadow: 0 4px 14px rgba(245, 158, 11, 0.25); }
+    50% { box-shadow: 0 4px 24px rgba(245, 158, 11, 0.4); }
+}
+
 .allow-btn {
     background: linear-gradient(135deg, #15803d, #22c55e) !important;
     color: white !important;
@@ -478,12 +528,13 @@ CUSTOM_CSS = """
     font-size: 15px !important;
     font-weight: 700 !important;
     letter-spacing: 1px !important;
-    transition: all 0.2s ease !important;
-    box-shadow: 0 4px 14px rgba(34, 197, 94, 0.25) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    animation: pulseGreen 3s ease-in-out infinite;
 }
 .allow-btn:hover {
-    transform: translateY(-2px) !important;
-    box-shadow: 0 6px 20px rgba(34, 197, 94, 0.35) !important;
+    transform: translateY(-3px) scale(1.03) !important;
+    box-shadow: 0 8px 30px rgba(34, 197, 94, 0.4) !important;
+    animation: none;
 }
 
 .block-btn {
@@ -495,12 +546,13 @@ CUSTOM_CSS = """
     font-size: 15px !important;
     font-weight: 700 !important;
     letter-spacing: 1px !important;
-    transition: all 0.2s ease !important;
-    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.25) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    animation: pulseRed 3s ease-in-out infinite;
 }
 .block-btn:hover {
-    transform: translateY(-2px) !important;
-    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35) !important;
+    transform: translateY(-3px) scale(1.03) !important;
+    box-shadow: 0 8px 30px rgba(239, 68, 68, 0.4) !important;
+    animation: none;
 }
 
 .flag-btn {
@@ -512,28 +564,31 @@ CUSTOM_CSS = """
     font-size: 15px !important;
     font-weight: 700 !important;
     letter-spacing: 1px !important;
-    transition: all 0.2s ease !important;
-    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.25) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    animation: pulseAmber 3s ease-in-out infinite;
 }
 .flag-btn:hover {
-    transform: translateY(-2px) !important;
-    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.35) !important;
+    transform: translateY(-3px) scale(1.03) !important;
+    box-shadow: 0 8px 30px rgba(245, 158, 11, 0.4) !important;
+    animation: none;
 }
 
-/* Inputs */
+/* === INPUTS === */
 textarea, select, input {
     background: #0f172a !important;
     border: 1px solid #1e293b !important;
     border-radius: 10px !important;
     color: #e2e8f0 !important;
     font-size: 13px !important;
+    transition: border-color 0.3s, box-shadow 0.3s !important;
 }
 textarea:focus, select:focus, input:focus {
-    border-color: #334155 !important;
+    border-color: #06b6d4 !important;
+    box-shadow: 0 0 0 3px rgba(6,182,212,0.1) !important;
     outline: none !important;
 }
 
-/* Clean labels */
+/* === LABELS === */
 label {
     color: #64748b !important;
     font-size: 12px !important;
@@ -541,13 +596,39 @@ label {
     letter-spacing: 0.5px !important;
 }
 
-/* Hide footer */
+/* === HIDE FOOTER === */
 footer { display: none !important; }
 
-/* Scrollbar */
+/* === SCROLLBAR === */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: #020617; }
 ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #334155; }
+
+/* === ANIMATED GRADIENT TEXT (for header) === */
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.gradient-title {
+    background: linear-gradient(135deg, #06b6d4, #8b5cf6, #22c55e, #06b6d4);
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gradientShift 6s ease infinite;
+}
+
+/* === LIVE INDICATOR PULSE === */
+@keyframes livePulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.5); }
+}
+.live-dot {
+    animation: livePulse 2s ease-in-out infinite;
+}
 """
 
 
@@ -571,12 +652,12 @@ def create_ui() -> gr.Blocks:
             <div style="display:flex; align-items:center; gap:12px;">
                 <span style="font-size:24px;">🛡️</span>
                 <div>
-                    <div style="font-size:17px; font-weight:700; color:#e2e8f0; letter-spacing:-0.3px;">Agent Safety Monitor</div>
+                    <div class="gradient-title" style="font-size:17px; font-weight:700; letter-spacing:-0.3px;">Agent Safety Monitor</div>
                     <div style="font-size:11px; color:#475569;">69 tasks · 4 difficulties · deterministic grading</div>
                 </div>
             </div>
             <div style="display:flex; gap:6px; align-items:center;">
-                <span style="width:8px; height:8px; border-radius:50%; background:#22c55e; display:inline-block;"></span>
+                <span class="live-dot" style="width:8px; height:8px; border-radius:50%; background:#22c55e; display:inline-block;"></span>
                 <span style="font-size:12px; color:#64748b;">Live</span>
             </div>
         </div>
