@@ -1,4 +1,26 @@
 #!/usr/bin/env bash
+#
+# validate-submission.sh — OpenEnv Submission Validator
+#
+# Checks that your HF Space is live, Docker image builds, and openenv validate passes.
+#
+# Prerequisites:
+#   - Docker:       https://docs.docker.com/get-docker/
+#   - openenv-core: pip install openenv-core
+#   - curl (usually pre-installed)
+#
+# Run:
+#   chmod +x validate-submission.sh
+#   ./validate-submission.sh <ping_url> [repo_dir]
+#
+# Arguments:
+#   ping_url   Your HuggingFace Space URL (e.g. https://your-space.hf.space)
+#   repo_dir   Path to your repo (default: current directory)
+#
+# Examples:
+#   ./validate-submission.sh https://my-team.hf.space
+#   ./validate-submission.sh https://my-team.hf.space ./my-repo
+#
 
 set -uo pipefail
 
@@ -46,6 +68,9 @@ REPO_DIR="${2:-.}"
 
 if [ -z "$PING_URL" ]; then
   printf "Usage: %s <ping_url> [repo_dir]\n" "$0"
+  printf "\n"
+  printf "  ping_url   Your HuggingFace Space URL (e.g. https://your-space.hf.space)\n"
+  printf "  repo_dir   Path to your repo (default: current directory)\n"
   exit 1
 fi
 
@@ -88,10 +113,12 @@ if [ "$HTTP_CODE" = "200" ]; then
 elif [ "$HTTP_CODE" = "000" ]; then
   fail "HF Space not reachable (connection failed or timed out)"
   hint "Check your network connection and that the Space is running."
+  hint "Try: curl -s -o /dev/null -w '%%{http_code}' -X POST $PING_URL/reset"
   stop_at "Step 1"
 else
   fail "HF Space /reset returned HTTP $HTTP_CODE (expected 200)"
   hint "Make sure your Space is running and the URL is correct."
+  hint "Try opening $PING_URL in your browser first."
   stop_at "Step 1"
 fi
 
@@ -99,6 +126,7 @@ log "${BOLD}Step 2/3: Running docker build${NC} ..."
 
 if ! command -v docker &>/dev/null; then
   fail "docker command not found"
+  hint "Install Docker: https://docs.docker.com/get-docker/"
   stop_at "Step 2"
 fi
 

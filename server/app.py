@@ -483,6 +483,23 @@ async def generated_tasks(
 
 
 # ---------------------------------------------------------------------------
+# Gradio Web UI (mounted at / for HuggingFace Spaces)
+# ---------------------------------------------------------------------------
+
+try:
+    import gradio as gr
+    from ui import create_ui
+
+    gradio_app = create_ui()
+    app = gr.mount_gradio_app(app, gradio_app, path="/")
+    logger.info("Gradio UI mounted at /")
+except ImportError:
+    logger.info("Gradio not installed — API-only mode (UI disabled)")
+except Exception as e:
+    logger.warning(f"Gradio UI failed to load: {e} — API-only mode")
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -500,3 +517,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

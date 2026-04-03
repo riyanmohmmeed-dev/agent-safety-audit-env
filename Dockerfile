@@ -17,10 +17,11 @@ RUN pip install --no-cache-dir \
     openai>=1.0.0 \
     requests>=2.28.0 \
     sentence-transformers>=2.2.0 \
-    torch>=2.0.0
+    torch>=2.0.0 \
+    gradio>=4.44.0
 
 # Copy application code (separate layer — changes more often)
-COPY models.py graders.py baseline.py client.py __init__.py inference.py ./
+COPY models.py graders.py baseline.py client.py __init__.py inference.py ui.py ./
 COPY openenv.yaml README.md ./
 COPY server/ ./server/
 COPY tasks/ ./tasks/

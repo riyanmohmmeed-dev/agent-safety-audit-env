@@ -15,3 +15,6 @@ openai==1.74.0
 
 # --- HTTP Client (for client.py demo) ---
 requests==2.32.3
+
+# --- Web UI ---
+gradio>=4.44.0
