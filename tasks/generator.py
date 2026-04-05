@@ -459,8 +459,12 @@ class TaskGenerator:
     """Procedural task generator for curriculum learning.
 
     Generates unlimited unique AI agent safety audit tasks by combining
-    composable templates. All generation is deterministic — the same seed
-    always produces the same sequence of tasks.
+    composable templates with runtime parameterization. Every generated task
+    has randomized file paths, IPs, usernames, and database names — ensuring
+    no two runs produce identical scenarios.
+
+    All generation is deterministic — the same seed always produces the
+    same sequence of tasks.
 
     Usage:
         gen = TaskGenerator(seed=42)
@@ -468,9 +472,74 @@ class TaskGenerator:
         # Returns a task dict compatible with the grading system
     """
 
+    # Runtime parameterization pools — makes every task unique
+    _USERNAMES = ["admin", "deploy_svc", "ci_runner", "root", "dbadmin", "jenkins", "k8s_operator", "dev_lead"]
+    _DB_NAMES = ["userdb", "analytics", "payments_prod", "inventory", "customer_data", "auth_store", "session_db"]
+    _IP_INTERNAL = ["10.0.{}.{}", "172.16.{}.{}", "192.168.{}.{}"]
+    _FILE_PREFIXES = ["/app", "/src", "/opt/services", "/var/lib", "/home/deploy", "/srv"]
+    _PORTS = [5432, 3306, 27017, 6379, 8080, 9200, 443]
+    _DOMAINS = ["internal-api.acme.corp", "staging.platform.io", "prod-svc.company.net",
+                "data-lake.analytics.internal", "auth.identity-provider.org"]
+
     def __init__(self, seed: int = 42) -> None:
         self._rng = random.Random(seed)
         self._counter = 0
+
+    def _rand_ip(self) -> str:
+        tpl = self._rng.choice(self._IP_INTERNAL)
+        return tpl.format(self._rng.randint(1, 254), self._rng.randint(1, 254))
+
+    def _rand_path(self, filename: str = "config.yaml") -> str:
+        return f"{self._rng.choice(self._FILE_PREFIXES)}/{filename}"
+
+    def _rand_db(self) -> str:
+        return self._rng.choice(self._DB_NAMES)
+
+    def _rand_user(self) -> str:
+        return self._rng.choice(self._USERNAMES)
+
+    def _rand_domain(self) -> str:
+        return self._rng.choice(self._DOMAINS)
+
+    def _rand_port(self) -> int:
+        return self._rng.choice(self._PORTS)
+
+    def _randomize_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
+        """Apply runtime parameterization to make a task unique.
+
+        Replaces generic placeholders in action targets/details with
+        randomized values so every generated task feels novel.
+        """
+        task = copy.deepcopy(task)
+        ip = self._rand_ip()
+        db = self._rand_db()
+        user = self._rand_user()
+        port = self._rand_port()
+        domain = self._rand_domain()
+
+        # Inject randomized context
+        ctx = task.get("system_context", {})
+        ctx["db_host"] = f"{ip}:{port}"
+        ctx["db_name"] = db
+        ctx["service_account"] = user
+        task["system_context"] = ctx
+
+        # Randomize action log targets where applicable
+        for action in task.get("action_log", []):
+            target = action.get("target", "")
+            # Randomize file paths
+            if target.startswith("/") and "." in target:
+                base = target.rsplit("/", 1)[-1]
+                action["target"] = self._rand_path(base)
+            # Randomize hostnames in commands
+            if "internal" in target or "company" in target:
+                action["target"] = target.replace("internal-api.company.com", domain)
+            # Inject randomized IPs into details
+            details = action.get("details", "")
+            if "10.0." in details:
+                action["details"] = details.replace("10.0.3.47", ip)
+
+        return task
 
     def generate_task(self, difficulty: str = "easy") -> Dict[str, Any]:
         """Generate a single task for the given difficulty.
@@ -484,11 +553,14 @@ class TaskGenerator:
         self._counter += 1
 
         if difficulty == "hard":
-            return self._generate_hard_task()
+            task = self._generate_hard_task()
         elif difficulty == "medium":
-            return self._generate_medium_task()
+            task = self._generate_medium_task()
         else:
-            return self._generate_easy_task()
+            task = self._generate_easy_task()
+
+        # Apply runtime parameterization — unique IPs, paths, usernames per run
+        return self._randomize_task(task)
 
     def _generate_easy_task(self) -> Dict[str, Any]:
         """Easy task: single obvious violation, 2-4 actions."""

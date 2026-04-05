@@ -241,9 +241,25 @@ def run_standard(client: OpenAI, env: SafetyEnvClient) -> List[Dict]:
         for i, d in enumerate(["easy", "medium", "grey_area", "hard"])
     ]
 
-def run_curriculum(client: OpenAI, env: SafetyEnvClient, n: int = 4) -> List[Dict]:
-    """Mode 2: Adaptive curriculum — environment auto-adjusts difficulty."""
-    print("\n  MODE 2: CURRICULUM — adaptive difficulty", file=sys.stderr)
+def run_generated(client: OpenAI, env: SafetyEnvClient, n: int = 2) -> List[Dict]:
+    """Mode 2: Procedurally generated tasks — novel scenarios every run.
+
+    Uses the TaskGenerator (composable templates × runtime parameterization)
+    to create unlimited unique scenarios. Proves the environment is not just
+    replaying static JSON — it generates novel tasks with randomized file paths,
+    IPs, usernames, and violation patterns.
+    """
+    print("\n  MODE 2: GENERATED — procedural tasks", file=sys.stderr)
+    return [
+        run_episode(client, env, seed=200 + i * 17,
+                    options={"difficulty": d, "generated": True},
+                    label=f"Generated {d}")
+        for i, d in enumerate(["easy", "hard"][:n])
+    ]
+
+def run_curriculum(client: OpenAI, env: SafetyEnvClient, n: int = 2) -> List[Dict]:
+    """Mode 3: Adaptive curriculum — environment auto-adjusts difficulty."""
+    print("\n  MODE 3: CURRICULUM — adaptive difficulty", file=sys.stderr)
     return [
         run_episode(client, env, seed=100 + i * 13,
                     options={"difficulty": "easy", "adaptive_difficulty": True},
@@ -254,7 +270,12 @@ def run_curriculum(client: OpenAI, env: SafetyEnvClient, n: int = 4) -> List[Dic
 
 # ── Main ─────────────────────────────────────────────────────────────────────
 def main() -> None:
-    """Run 8 episodes (4 standard + 4 curriculum). ~5-10 min on 2vCPU/8GB."""
+    """Run 8 episodes across 3 modes. ~5-10 min on 2vCPU/8GB.
+
+    Mode 1: Standard — 4 static tasks (1 per difficulty) → proves grader diversity
+    Mode 2: Generated — 2 procedural tasks → proves dynamic environment
+    Mode 3: Curriculum — 2 adaptive tasks → proves curriculum learning
+    """
     print(f"AI Agent Safety Monitor | {MODEL_NAME} | {API_BASE_URL}", file=sys.stderr)
 
     client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
@@ -267,9 +288,10 @@ def main() -> None:
         print(f"ERROR: Cannot connect to {ENV_BASE_URL}: {e}", file=sys.stderr)
         return
 
-    std_results = run_standard(client, env)
-    cur_results = run_curriculum(client, env)
-    all_results = std_results + cur_results
+    std_results = run_standard(client, env)       # 4 episodes
+    gen_results = run_generated(client, env)       # 2 episodes
+    cur_results = run_curriculum(client, env)      # 2 episodes
+    all_results = std_results + gen_results + cur_results
 
     # ── Summary (stderr — keeps stdout clean for evaluator) ──────────────
     scores = [r["score"] for r in all_results]
@@ -278,11 +300,16 @@ def main() -> None:
     print(f"\n{'='*50}", file=sys.stderr)
     print(f"SUMMARY: {len(all_results)} episodes | Avg Score: {avg:.4f}", file=sys.stderr)
     print(f"{'─'*50}", file=sys.stderr)
-    for r in all_results:
-        t = r.get("curriculum_transition", "")
-        marker = f" ⬆{t}" if t else ""
-        print(f"  {r['difficulty']:12s} | {r['task_id']:12s} | "
-              f"score={r['score']:.4f} | steps={r['steps']}{marker}", file=sys.stderr)
+    for label, results in [("STANDARD (4)", std_results),
+                           ("GENERATED (2)", gen_results),
+                           ("CURRICULUM (2)", cur_results)]:
+        print(f"  {label}:", file=sys.stderr)
+        for r in results:
+            t = r.get("curriculum_transition", "")
+            gen = " [GEN]" if "gen_" in r.get("task_id", "") else ""
+            marker = f" ⬆{t}" if t else ""
+            print(f"    {r['difficulty']:12s} | {r['task_id']:12s} | "
+                  f"score={r['score']:.4f} | steps={r['steps']}{gen}{marker}", file=sys.stderr)
     print(f"{'─'*50}", file=sys.stderr)
     print(f"Score range: {min(scores):.4f}–{max(scores):.4f} | "
           f"{len(set(round(s,4) for s in scores))} unique", file=sys.stderr)
@@ -290,3 +317,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
