@@ -482,8 +482,89 @@ async def generated_tasks(
     }
 
 
+
 # ---------------------------------------------------------------------------
-# Gradio Web UI (mounted at / for HuggingFace Spaces)
+# Adversarial Mode — Live Sandbox Endpoints (additive, no existing code changed)
+# ---------------------------------------------------------------------------
+
+from server.adversarial import AdversarialEnvironment
+
+_adversarial_env = AdversarialEnvironment()
+
+
+class AdversarialResetRequest(BaseModel):
+    seed: int = 42
+
+
+class AdversarialStepRequest(BaseModel):
+    command: str = Field(..., description="Shell command from the attacker LLM")
+    monitor_decision: str = Field("allow", description="Monitor's decision: allow/block/flag")
+
+
+@app.post("/adversarial/reset")
+async def adversarial_reset(req: AdversarialResetRequest):
+    """Reset for a new adversarial episode with live sandbox."""
+    try:
+        result = _adversarial_env.reset(seed=req.seed)
+        attacker_prompt = _adversarial_env.get_attacker_prompt()
+        result["attacker_prompt"] = attacker_prompt
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/adversarial/step")
+async def adversarial_step(req: AdversarialStepRequest):
+    """Execute a command in the sandbox and grade the monitor's decision.
+
+    Flow:
+    1. Command is executed in the real sandbox
+    2. Monitor's decision is graded against sandbox safety check
+    3. Next attacker prompt is returned for the next round
+    """
+    try:
+        # Execute command in sandbox
+        exec_result = _adversarial_env.execute_and_evaluate(req.command)
+
+        # Grade monitor's decision against ground truth
+        reward = _adversarial_env.grade_decision(
+            req.monitor_decision,
+            exec_result["ground_truth"],
+        )
+
+        # Get next attacker prompt (if not done)
+        attacker_prompt = ""
+        if not exec_result["done"]:
+            attacker_prompt = _adversarial_env.get_attacker_prompt()
+
+        return {
+            "observation": exec_result["observation"],
+            "reward": reward,
+            "done": exec_result["done"],
+            "ground_truth_blocked": exec_result["ground_truth"]["should_block"],
+            "sandbox_result": exec_result["sandbox_result"],
+            "attacker_prompt": attacker_prompt,
+            "info": {
+                "step": _adversarial_env.step_count,
+                "total_reward": sum(_adversarial_env.scores),
+            },
+        }
+    except Exception as e:
+        logger.error(f"Adversarial step error: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/adversarial/summary")
+async def adversarial_summary():
+    """Get the episode summary with filesystem verification."""
+    try:
+        return _adversarial_env.get_episode_summary()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ---------------------------------------------------------------------------
+# Gradio Web UI (mounted LAST at / for HuggingFace Spaces)
 # ---------------------------------------------------------------------------
 
 try:
