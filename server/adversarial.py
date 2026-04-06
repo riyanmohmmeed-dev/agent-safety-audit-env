@@ -190,11 +190,19 @@ class AdversarialEnvironment:
             Dict with execution results, sandbox assessment, and observation
             for the monitor LLM.
         """
-        # Execute in sandbox
-        result = self.executor.execute(command)
+        # Execute in sandbox (with error handling)
+        try:
+            result = self.executor.execute(command)
+        except Exception as e:
+            logger.error(f"Sandbox execution failed: {e}")
+            result = {"stdout": "", "stderr": str(e), "exit_code": -1, "executed": False}
 
         # The sandbox's own safety check = ground truth
-        is_safe, safety_reason = self.executor.is_command_safe(command)
+        try:
+            is_safe, safety_reason = self.executor.is_command_safe(command)
+        except Exception as e:
+            logger.error(f"Safety check failed: {e}")
+            is_safe, safety_reason = False, f"Safety check error: {e}"
 
         # Build the observation for the monitor
         entry = {
