@@ -254,7 +254,7 @@ async def grader():
     """Return grader metadata and scoring weights per difficulty."""
     return {
         "graders": GRADERS,
-        "score_range": [0.0, 1.0],
+        "score_range": [0.001, 0.999],
         "deterministic": True,
         "description": (
             "Per-step rewards for each allow/block/flag decision, plus "
@@ -421,9 +421,11 @@ async def step(request: StepRequest):
             reason=request.reason,
         )
         obs, reward, done, info = env.step(action)
+        # Validator requires all scores/rewards strictly in (0, 1)
+        clamped_reward = round(max(0.001, min(0.999, reward)), 4)
         return {
             "observation": obs.model_dump(),
-            "reward": reward,
+            "reward": clamped_reward,
             "done": done,
             "info": info,
         }
@@ -539,7 +541,7 @@ async def adversarial_step(req: AdversarialStepRequest):
 
         return {
             "observation": exec_result["observation"],
-            "reward": reward,
+            "reward": round(max(0.001, min(0.999, reward)), 4),
             "done": exec_result["done"],
             "ground_truth_blocked": exec_result["ground_truth"]["should_block"],
             "sandbox_result": exec_result["sandbox_result"],
