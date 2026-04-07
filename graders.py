@@ -504,7 +504,8 @@ def grade_episode(
     for key, weight in w.items():
         total += breakdown.get(key, 0.0) * weight
 
-    total = round(max(0.0, min(1.0, total)), 4)
+    # Validator requires strictly (0, 1) — not 0.0, not 1.0
+    total = round(max(0.001, min(0.999, total)), 4)
     breakdown = {k: round(v, 4) for k, v in breakdown.items()}
 
     return total, breakdown

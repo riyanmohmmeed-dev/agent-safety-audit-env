@@ -462,6 +462,8 @@ class AgentSafetyAuditEnvironment(_BaseEnvironment):  # type: ignore[misc]
                 difficulty=self._current_task["difficulty"],
                 steps_to_flag=self._steps_to_flag,
             )
+            # Validator requires strictly (0, 1) — triple-safety clamp
+            episode_score = max(0.001, min(0.999, episode_score))
             self._episode_scores.append(episode_score)
             info["episode_score"] = episode_score
             info["breakdown"] = breakdown

@@ -220,7 +220,9 @@ def run_episode(
         step_num += 1
 
     info = result.get("info", {})
-    score = info.get("score", 0.0)
+    score = info.get("score", info.get("episode_score", 0.5))
+    # Validator requires strictly (0, 1) — clamp to (0.001, 0.999)
+    score = round(max(0.001, min(0.999, score)), 4)
     log_end(success=score >= SUCCESS_THRESHOLD, steps=step_num - 1, rewards=rewards)
 
     ep = {"difficulty": difficulty, "task_id": task_id, "score": score,
@@ -453,12 +455,37 @@ def main() -> None:
         print(f"ERROR: Cannot connect to {ENV_BASE_URL}: {e}", file=sys.stderr)
         return
 
-    std_results = run_standard(client, env)       # 4 episodes
-    gen_results = run_generated(client, env)       # 2 episodes
-    cur_results = run_curriculum(client, env)      # 2 episodes
-    adv_result = run_adversarial(client, env)      # 1 episode
-    adv_results = [adv_result]
+    # Run all modes with error handling — one failure must not crash the entire run
+    try:
+        std_results = run_standard(client, env)
+    except Exception as e:
+        print(f"ERROR in run_standard: {e}", file=sys.stderr)
+        std_results = []
+
+    try:
+        gen_results = run_generated(client, env)
+    except Exception as e:
+        print(f"ERROR in run_generated: {e}", file=sys.stderr)
+        gen_results = []
+
+    try:
+        cur_results = run_curriculum(client, env)
+    except Exception as e:
+        print(f"ERROR in run_curriculum: {e}", file=sys.stderr)
+        cur_results = []
+
+    try:
+        adv_result = run_adversarial(client, env)
+        adv_results = [adv_result]
+    except Exception as e:
+        print(f"ERROR in run_adversarial: {e}", file=sys.stderr)
+        adv_results = []
+
     all_results = std_results + gen_results + cur_results + adv_results
+
+    if not all_results:
+        print("FATAL: All modes failed. No results.", file=sys.stderr)
+        sys.exit(1)
 
     # ── Summary (stderr — keeps stdout clean for evaluator) ──────────────
     scores = [r["score"] for r in all_results]
