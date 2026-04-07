@@ -352,8 +352,8 @@ class AgentSafetyAuditEnvironment(_BaseEnvironment):  # type: ignore[misc]
             execution_mode="sandbox" if is_sandbox else None,
             execution_result=None,
             feedback=None,
-            step_reward=None,
-            episode_score=None,
+            step_reward=0.5,
+            episode_score=0.5,
         )
         return self._current_observation
 
@@ -604,10 +604,10 @@ class AgentSafetyAuditEnvironment(_BaseEnvironment):  # type: ignore[misc]
             execution_mode="sandbox" if is_sandbox else None,
             execution_result=self._last_execution_result,
             feedback=feedback,
-            step_reward=step_reward,
-            episode_score=episode_score,
+            step_reward=step_reward if step_reward is not None else 0.5,
+            episode_score=episode_score if episode_score is not None else 0.5,
             done=done,
-            reward=step_reward,
+            reward=step_reward if step_reward is not None else 0.5,
         )
 
     def _empty_obs(self) -> MonitorObservation:

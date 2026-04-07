@@ -321,7 +321,8 @@ def _run_heuristic_baseline() -> Dict[str, Any]:
                 monitor_action = _heuristic_analyze_action(action_data)
                 obs, reward, done, info = episode_env.step(monitor_action)
 
-            score = info.get("score", info.get("episode_score", 0.0))
+            score = info.get("score", info.get("episode_score", 0.5))
+            score = round(max(0.001, min(0.999, score)), 4)
             all_scores.append(score)
             scores_by_diff[difficulty].append(score)
 
@@ -333,11 +334,11 @@ def _run_heuristic_baseline() -> Dict[str, Any]:
                 "strategy": "keyword_heuristic",
             })
 
-    avg = sum(all_scores) / len(all_scores) if all_scores else 0.0
+    avg = sum(all_scores) / len(all_scores) if all_scores else 0.5
     results["total_tasks"] = len(all_scores)
-    results["average_score"] = round(avg, 4)
+    results["average_score"] = round(max(0.001, min(0.999, avg)), 4)
     results["scores_by_difficulty"] = {
-        d: round(sum(s) / len(s), 4) if s else 0.0
+        d: round(max(0.001, min(0.999, sum(s) / len(s))), 4) if s else 0.5
         for d, s in scores_by_diff.items()
     }
     results["summary"] = {
