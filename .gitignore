@@ -22,3 +22,6 @@ Thumbs.db
 
 # Sandbox runtime
 /tmp/sandbox/
+training_results/*.png
+training_results/*.pt
+training_results/*.npz

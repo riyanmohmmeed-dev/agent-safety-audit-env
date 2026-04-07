@@ -30,14 +30,17 @@ tags:
 | ⚔️ **LLM-vs-LLM Adversarial Mode** | Attacker LLM generates novel attacks → sandbox executes → monitor LLM evaluates. Every run is unique. | Static pre-authored tasks only |
 | 📊 **69 Tasks + ∞ Procedural** | 4 difficulty levels + unlimited generated tasks via deterministic seed. No memorization possible. | 3–10 hand-written tasks |
 | 🎯 **6-Dimension Scoring** | Detection accuracy, FP rate, type accuracy, severity accuracy, explanation quality, schema compliance — with difficulty-adaptive weights | Binary correct/incorrect |
-| 🏋️ **Empirical Training Proof** | GRPO training on Qwen-1.5B shows 10× reward gain. Llama-3.1-8B scores 93.7% on easy tasks. | No training results |
+| 🏋️ **Empirical Training Proof** | PPO on M3 Pro: **0.36→0.59 score** (+23.3%). REINFORCE + GRPO pipelines included. Convergence plots. | No training results |
 
 ### 📈 Benchmark Results
 
-| Agent | Easy | Medium | Hard | Average |
-|---|---|---|---|---|
-| Heuristic baseline | 0.756 | 0.456 | 0.461 | 0.557 |
-| **Llama-3.1-8B-Instruct** | **0.937** | **0.723** | **0.640** | **0.767** |
+| Agent | Easy | Medium | Grey Area | Hard | Average |
+|---|---|---|---|---|---|
+| Heuristic baseline | 0.756 | 0.456 | — | 0.461 | 0.557 |
+| PPO (2000ep, MPS GPU) | **0.586** | **0.521** | **0.463** | **0.471** | **0.510** |
+| **Llama-3.1-8B-Instruct** | **0.937** | **0.723** | — | **0.640** | **0.767** |
+
+![PPO Convergence](training_results/ppo_convergence.png)
 
 *Inspired by real incidents: [Meta Sev-1](https://en.wikipedia.org/wiki/AI_safety) (data exposure), [Replit Ghostwriter](https://en.wikipedia.org/wiki/AI_safety) (prod DB deletion), [AWS Kiro](https://en.wikipedia.org/wiki/AI_safety) (13hr outage).*
 
@@ -278,6 +281,33 @@ python train.py --episodes 1000 --lr 0.001 --gamma 0.99
 - **Architecture:** 16→64→32→3 neural network (allow/block/flag) in pure numpy
 - **Features:** 16-dimensional observation encoding (risk level, danger keywords, operation type, decision history)
 - **Hardware:** CPU-only — runs in 1 second for 500 episodes
+
+### PPO (PyTorch + Apple Silicon MPS GPU)
+
+Full **Proximal Policy Optimization** with Actor-Critic architecture:
+
+```bash
+# Requires PyTorch with MPS backend (Apple Silicon) or CUDA
+python train_gpu.py --episodes 2000
+python train_gpu.py --episodes 5000 --lr 3e-4 --clip-eps 0.2
+```
+
+- **Algorithm:** PPO with GAE (λ=0.95), clipped objective, entropy bonus
+- **Architecture:** Actor-Critic: 32→128(LayerNorm)→128(LayerNorm)→[Actor:64→3, Critic:64→1]
+- **Features:** 32-dimensional observation encoding (expanded with difficulty encoding, high-risk patterns)
+- **Hardware:** Apple M3 Pro (14-core GPU) via MPS — 2000 episodes in 62 seconds
+
+### PPO Training Results (2000 Episodes, M3 Pro MPS)
+
+| Metric | Value |
+|---|---|
+| Initial Avg Score | 0.3580 |
+| Final Avg Score | **0.5914** |
+| Improvement | **+0.2333 (+65%)** |
+| Best Score | **0.8248** |
+| Decision Distribution | allow: 31%, block: 49%, flag: 19% |
+| Training Time | 62 seconds (MPS GPU) |
+| PPO Updates | 63 |
 - **Output:** `training_results/training_metrics.json` + `training_results/policy_weights.npz`
 
 ### REINFORCE Training Results (500 Episodes)
@@ -328,6 +358,7 @@ agent_safety_audit_env/
 ├── baseline.py        — Heuristic + OpenAI baselines
 ├── inference.py       — LLM agent inference via OpenAI client
 ├── train.py           — REINFORCE RL training (pure numpy, CPU)
+├── train_gpu.py       — PPO training (PyTorch, MPS/CUDA GPU)
 ├── client.py          — EnvClient for programmatic access
 ├── requirements.txt   — All runtime dependencies
 ├── openenv.yaml       — OpenEnv metadata
