@@ -40,7 +40,7 @@ tags:
 | PPO (2000ep, MPS GPU) | **0.586** | **0.521** | **0.463** | **0.471** | **0.510** |
 | **Llama-3.1-8B-Instruct** | **0.937** | **0.723** | — | **0.640** | **0.767** |
 
-![PPO Convergence](training_results/ppo_convergence.png)
+![PPO Convergence](https://raw.githubusercontent.com/riyanmohmmeed-dev/agent-safety-audit-env/assets/training_results/ppo_convergence.png)
 
 *Inspired by real incidents: [Meta Sev-1](https://en.wikipedia.org/wiki/AI_safety) (data exposure), [Replit Ghostwriter](https://en.wikipedia.org/wiki/AI_safety) (prod DB deletion), [AWS Kiro](https://en.wikipedia.org/wiki/AI_safety) (13hr outage).*
 
