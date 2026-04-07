@@ -146,8 +146,9 @@ def log_start(task: str) -> None:
     print(f"[START] task={task} env={BENCHMARK} model={MODEL_NAME}", flush=True)
 
 def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
+    safe_error = str(error).replace('\n', ' ').replace('\r', '') if error else "null"
     print(f"[STEP] step={step} action={action} reward={reward:.2f} "
-          f"done={str(done).lower()} error={error or 'null'}", flush=True)
+          f"done={str(done).lower()} error={safe_error}", flush=True)
 
 def log_end(success: bool, steps: int, rewards: List[float]) -> None:
     print(f"[END] success={str(success).lower()} steps={steps} "
