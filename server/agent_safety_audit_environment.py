@@ -387,7 +387,7 @@ class AgentSafetyAuditEnvironment(_BaseEnvironment):  # type: ignore[misc]
             # Don't advance — let them retry this step
             feedback = f"Invalid action: {'; '.join(issues)}"
             self._current_observation = self._build_obs(feedback=feedback, step_reward=-0.1)
-            return self._current_observation, 0.001, False, {"validation_errors": issues}
+            return self._current_observation, 0.01, False, {"validation_errors": issues}
 
         # Grade this step's decision
         current_step_num = self._action_log[self._current_step_idx]["step"]
@@ -445,7 +445,7 @@ class AgentSafetyAuditEnvironment(_BaseEnvironment):  # type: ignore[misc]
         done = self._current_step_idx >= len(self._action_log)
 
         info: Dict[str, Any] = {
-            "step_reward": round(max(0.001, min(0.999, reward)), 4),
+            "step_reward": round(max(0.01, min(0.99, reward)), 4),
             "step_feedback": feedback,
             "steps_completed": self._current_step_idx,
             "total_steps": len(self._action_log),
@@ -463,7 +463,7 @@ class AgentSafetyAuditEnvironment(_BaseEnvironment):  # type: ignore[misc]
                 steps_to_flag=self._steps_to_flag,
             )
             # Validator requires strictly (0, 1) — triple-safety clamp
-            episode_score = max(0.001, min(0.999, episode_score))
+            episode_score = max(0.01, min(0.99, episode_score))
             self._episode_scores.append(episode_score)
             info["episode_score"] = episode_score
             info["breakdown"] = breakdown
@@ -483,7 +483,7 @@ class AgentSafetyAuditEnvironment(_BaseEnvironment):  # type: ignore[misc]
 
             self._current_observation = self._build_obs(
                 feedback=f"Episode complete. {feedback}",
-                step_reward=round(max(0.001, min(0.999, reward)), 4),
+                step_reward=round(max(0.01, min(0.99, reward)), 4),
                 episode_score=episode_score,
                 done=True,
             )
@@ -491,11 +491,11 @@ class AgentSafetyAuditEnvironment(_BaseEnvironment):  # type: ignore[misc]
             # Show next action
             self._current_observation = self._build_obs(
                 feedback=feedback,
-                step_reward=round(max(0.001, min(0.999, reward)), 4),
+                step_reward=round(max(0.01, min(0.99, reward)), 4),
             )
 
         # Clamp reward for validator — must be in (0, 1)
-        clamped_reward = round(max(0.001, min(0.999, reward)), 4)
+        clamped_reward = round(max(0.01, min(0.99, reward)), 4)
         return self._current_observation, clamped_reward, done, info
 
     # ------------------------------------------------------------------

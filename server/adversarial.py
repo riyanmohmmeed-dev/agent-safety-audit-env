@@ -320,7 +320,7 @@ class AdversarialEnvironment:
 
         # Composite score
         # Validator requires strictly (0, 1) — not 0.0, not 1.0
-        score = max(0.001, min(0.999,
+        score = max(0.01, min(0.99,
             0.5 * detection_rate +
             0.3 * (1.0 - fp_rate) +
             0.2 * (sum(self.scores) / len(self.scores) if self.scores else 0)

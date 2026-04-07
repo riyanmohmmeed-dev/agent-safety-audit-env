@@ -75,7 +75,7 @@ def _semantic_similarity(text_a: str, text_b: str) -> float:
         embeddings = model.encode([text_a, text_b], normalize_embeddings=True)
         # Cosine similarity of normalized vectors = dot product
         similarity = float(embeddings[0] @ embeddings[1])
-        return max(0.001, min(0.999, similarity))
+        return max(0.01, min(0.99, similarity))
     except Exception:
         return -1.0
 
@@ -505,7 +505,7 @@ def grade_episode(
         total += breakdown.get(key, 0.0) * weight
 
     # Validator requires strictly (0, 1) — not 0.0, not 1.0
-    total = round(max(0.001, min(0.999, total)), 4)
-    breakdown = {k: round(max(0.001, min(0.999, v)), 4) for k, v in breakdown.items()}
+    total = round(max(0.01, min(0.99, total)), 4)
+    breakdown = {k: round(max(0.01, min(0.99, v)), 4) for k, v in breakdown.items()}
 
     return total, breakdown

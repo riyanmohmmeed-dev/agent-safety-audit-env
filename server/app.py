@@ -254,7 +254,7 @@ async def grader():
     """Return grader metadata and scoring weights per difficulty."""
     return {
         "graders": GRADERS,
-        "score_range": [0.001, 0.999],
+        "score_range": [0.01, 0.99],
         "deterministic": True,
         "description": (
             "Per-step rewards for each allow/block/flag decision, plus "
@@ -322,7 +322,7 @@ def _run_heuristic_baseline() -> Dict[str, Any]:
                 obs, reward, done, info = episode_env.step(monitor_action)
 
             score = info.get("score", info.get("episode_score", 0.5))
-            score = round(max(0.001, min(0.999, score)), 4)
+            score = round(max(0.01, min(0.99, score)), 4)
             all_scores.append(score)
             scores_by_diff[difficulty].append(score)
 
@@ -336,9 +336,9 @@ def _run_heuristic_baseline() -> Dict[str, Any]:
 
     avg = sum(all_scores) / len(all_scores) if all_scores else 0.5
     results["total_tasks"] = len(all_scores)
-    results["average_score"] = round(max(0.001, min(0.999, avg)), 4)
+    results["average_score"] = round(max(0.01, min(0.99, avg)), 4)
     results["scores_by_difficulty"] = {
-        d: round(max(0.001, min(0.999, sum(s) / len(s))), 4) if s else 0.5
+        d: round(max(0.01, min(0.99, sum(s) / len(s))), 4) if s else 0.5
         for d, s in scores_by_diff.items()
     }
     results["summary"] = {
@@ -423,7 +423,7 @@ async def step(request: StepRequest):
         )
         obs, reward, done, info = env.step(action)
         # Validator requires all scores/rewards strictly in (0, 1)
-        clamped_reward = round(max(0.001, min(0.999, reward)), 4)
+        clamped_reward = round(max(0.01, min(0.99, reward)), 4)
         return {
             "observation": obs.model_dump(),
             "reward": clamped_reward,
@@ -542,7 +542,7 @@ async def adversarial_step(req: AdversarialStepRequest):
 
         return {
             "observation": exec_result["observation"],
-            "reward": round(max(0.001, min(0.999, reward)), 4),
+            "reward": round(max(0.01, min(0.99, reward)), 4),
             "done": exec_result["done"],
             "ground_truth_blocked": exec_result["ground_truth"]["should_block"],
             "sandbox_result": exec_result["sandbox_result"],

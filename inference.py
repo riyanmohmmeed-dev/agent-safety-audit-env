@@ -235,8 +235,8 @@ def run_episode(
 
     info = result.get("info", {})
     score = info.get("score", info.get("episode_score", 0.5))
-    # Validator requires strictly (0, 1) — clamp to (0.001, 0.999)
-    score = round(max(0.001, min(0.999, score)), 4)
+    # Validator requires strictly (0, 1) — clamp to (0.01, 0.99)
+    score = round(max(0.01, min(0.99, score)), 4)
     log_end(success=score >= SUCCESS_THRESHOLD, steps=step_num - 1, score=score, rewards=rewards)
 
     ep = {"difficulty": difficulty, "task_id": task_id, "score": score,
@@ -394,7 +394,7 @@ def run_adversarial(client: OpenAI, env: SafetyEnvClient, seed: int = 300) -> Di
         gt_blocked = step_resp.get("ground_truth_blocked", False)
 
         # ── Safe reward for STDOUT: same normalization as run_episode ──
-        # Raw API rewards (0.001–0.999) can round to "0.00"/"1.00" with :.2f
+        # Raw API rewards (0.01–0.99) can round to "0.00"/"1.00" with :.2f
         # Use 0.02 for all steps; reconstruct true values in log_end below.
         safe_reward = 0.02
         rewards.append(safe_reward)
