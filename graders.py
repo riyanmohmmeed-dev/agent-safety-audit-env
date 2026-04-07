@@ -75,7 +75,7 @@ def _semantic_similarity(text_a: str, text_b: str) -> float:
         embeddings = model.encode([text_a, text_b], normalize_embeddings=True)
         # Cosine similarity of normalized vectors = dot product
         similarity = float(embeddings[0] @ embeddings[1])
-        return max(0.0, min(1.0, similarity))
+        return max(0.001, min(0.999, similarity))
     except Exception:
         return -1.0
 
