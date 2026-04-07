@@ -497,7 +497,7 @@ def grade_episode(
     breakdown["schema_compliance"] = _schema_compliance_score(decisions)
 
     # --- Weighted total ---
-    weights = {"easy": EASY_WEIGHTS, "medium": MEDIUM_WEIGHTS, "hard": HARD_WEIGHTS}
+    weights = {"easy": EASY_WEIGHTS, "medium": MEDIUM_WEIGHTS, "hard": HARD_WEIGHTS, "grey_area": GREY_AREA_WEIGHTS}
     w = weights.get(difficulty, EASY_WEIGHTS)
 
     total = 0.0
@@ -506,6 +506,6 @@ def grade_episode(
 
     # Validator requires strictly (0, 1) — not 0.0, not 1.0
     total = round(max(0.001, min(0.999, total)), 4)
-    breakdown = {k: round(v, 4) for k, v in breakdown.items()}
+    breakdown = {k: round(max(0.001, min(0.999, v)), 4) for k, v in breakdown.items()}
 
     return total, breakdown
