@@ -17,4 +17,4 @@ openai==1.74.0
 requests==2.32.3
 
 # --- Web UI ---
-gradio>=4.44.0
+gradio==5.27.0

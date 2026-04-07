@@ -9,3 +9,4 @@ __pycache__/
 CHANGELOG.md
 CONTRIBUTING.md
 tests/
+training/

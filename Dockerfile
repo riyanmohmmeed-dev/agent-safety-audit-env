@@ -8,21 +8,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python deps FIRST for layer caching
-# (rebuilds only if deps change, not on every code change)
-COPY pyproject.toml requirements.txt ./
-RUN pip install --no-cache-dir \
-    fastapi>=0.100.0 \
-    uvicorn[standard]>=0.23.0 \
-    pydantic>=2.0.0 \
-    openai>=1.0.0 \
-    requests>=2.28.0 \
-    sentence-transformers>=2.2.0 \
-    torch>=2.0.0 \
-    gradio>=4.44.0
+# All versions pinned in requirements.txt for reproducible builds
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code (separate layer — changes more often)
 COPY models.py graders.py baseline.py client.py __init__.py inference.py ui.py ./
-COPY openenv.yaml README.md ./
+COPY openenv.yaml pyproject.toml README.md ./
 COPY server/ ./server/
 COPY tasks/ ./tasks/
 COPY sandbox/ ./sandbox/
