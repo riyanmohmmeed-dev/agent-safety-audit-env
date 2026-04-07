@@ -140,7 +140,7 @@ def _validate(data: Dict) -> Dict[str, str]:
 # ── Structured Logging (MANDATORY evaluator format) ──────────────────────────
 # [START] task=<name> env=<benchmark> model=<model>
 # [STEP]  step=<n> action=<str> reward=<0.00> done=<true|false> error=<msg|null>
-# [END]   success=<true|false> steps=<n> rewards=<r1,r2,...>
+# [END]   success=<true|false> steps=<n> score=<score> rewards=<r1,r2,...,rn>
 
 def log_start(task: str) -> None:
     print(f"[START] task={task} env={BENCHMARK} model={MODEL_NAME}", flush=True)
@@ -150,9 +150,9 @@ def log_step(step: int, action: str, reward: float, done: bool, error: Optional[
     print(f"[STEP] step={step} action={action} reward={reward:.2f} "
           f"done={str(done).lower()} error={safe_error}", flush=True)
 
-def log_end(success: bool, steps: int, rewards: List[float]) -> None:
+def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
     print(f"[END] success={str(success).lower()} steps={steps} "
-          f"rewards={','.join(f'{r:.2f}' for r in rewards)}", flush=True)
+          f"score={score:.2f} rewards={','.join(f'{r:.2f}' for r in rewards)}", flush=True)
 
 
 # ── Episode Runner ───────────────────────────────────────────────────────────
@@ -237,7 +237,7 @@ def run_episode(
     score = info.get("score", info.get("episode_score", 0.5))
     # Validator requires strictly (0, 1) — clamp to (0.001, 0.999)
     score = round(max(0.001, min(0.999, score)), 4)
-    log_end(success=score >= SUCCESS_THRESHOLD, steps=step_num - 1, rewards=rewards)
+    log_end(success=score >= SUCCESS_THRESHOLD, steps=step_num - 1, score=score, rewards=rewards)
 
     ep = {"difficulty": difficulty, "task_id": task_id, "score": score,
           "steps": step_num - 1, "total_reward": sum(rewards),
@@ -435,7 +435,7 @@ def run_adversarial(client: OpenAI, env: SafetyEnvClient, seed: int = 300) -> Di
         safe_rewards = [0.02] * (step_num - 1) + [max(0.02, score - 0.02 * (step_num - 1))]
     else:
         safe_rewards = [max(0.02, min(0.98, score))]
-    log_end(success=score >= SUCCESS_THRESHOLD, steps=step_num, rewards=safe_rewards)
+    log_end(success=score >= SUCCESS_THRESHOLD, steps=step_num, score=score, rewards=safe_rewards)
 
     print(f"  Detection rate: {summary.get('detection_rate', '?')} | "
           f"FP rate: {summary.get('false_positive_rate', '?')} | "
