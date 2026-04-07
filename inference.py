@@ -176,7 +176,7 @@ def run_episode(
     result: Dict[str, Any] = {}
     last_error: Optional[str] = None
 
-    while not done and step_num <= 15:
+    while not done:
         conversation.append({"role": "user", "content": build_prompt(obs, step_num)})
 
         # LLM call with graceful fallback
@@ -482,14 +482,33 @@ def main() -> None:
         print(f"ERROR: Cannot connect to {ENV_BASE_URL}: {e}", file=sys.stderr)
         return
 
-    # Run only Mode 1 (3 minimum required episodes) to avoid evaluator timeouts
+    # Run all modes with error handling — one failure must not crash the entire run
     try:
         std_results = run_standard(client, env)
     except Exception as e:
         print(f"ERROR in run_standard: {e}", file=sys.stderr)
         std_results = []
 
-    all_results = std_results
+    try:
+        gen_results = run_generated(client, env)
+    except Exception as e:
+        print(f"ERROR in run_generated: {e}", file=sys.stderr)
+        gen_results = []
+
+    try:
+        cur_results = run_curriculum(client, env)
+    except Exception as e:
+        print(f"ERROR in run_curriculum: {e}", file=sys.stderr)
+        cur_results = []
+
+    try:
+        adv_result = run_adversarial(client, env)
+        adv_results = [adv_result]
+    except Exception as e:
+        print(f"ERROR in run_adversarial: {e}", file=sys.stderr)
+        adv_results = []
+
+    all_results = std_results + gen_results + cur_results + adv_results
 
     if not all_results:
         print("FATAL: All modes failed. No results.", file=sys.stderr)
@@ -502,7 +521,10 @@ def main() -> None:
     print(f"\n{'='*50}", file=sys.stderr)
     print(f"SUMMARY: {len(all_results)} episodes | Avg Score: {avg:.4f}", file=sys.stderr)
     print(f"{'─'*50}", file=sys.stderr)
-    for label, results in [("STANDARD (4)", std_results)]:
+    for label, results in [("STANDARD (4)", std_results),
+                           ("GENERATED (2)", gen_results),
+                           ("CURRICULUM (2)", cur_results),
+                           ("ADVERSARIAL (1)", adv_results)]:
         print(f"  {label}:", file=sys.stderr)
         for r in results:
             t = r.get("curriculum_transition", "")
