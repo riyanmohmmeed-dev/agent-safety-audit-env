@@ -30,3 +30,5 @@ deep_scan_ssl.py
 scan_results.txt
 ultra_results.txt
 ultra_scan.py
+training_results_30k/
+training_results/
