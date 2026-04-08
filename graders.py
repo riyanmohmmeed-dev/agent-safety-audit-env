@@ -146,6 +146,42 @@ def compute_rouge(hypothesis: str, reference: str) -> Dict[str, float]:
 
 
 # ---------------------------------------------------------------------------
+# BERTScore (lazy-loaded)
+# ---------------------------------------------------------------------------
+
+_BERT_SCORER = None
+_BERT_AVAILABLE = None
+
+def _get_bert_scorer():
+    """Lazy-load BERTScorer."""
+    global _BERT_SCORER, _BERT_AVAILABLE
+    if _BERT_AVAILABLE is not None:
+        return _BERT_SCORER
+    try:
+        from bert_score import BERTScorer
+        _BERT_SCORER = BERTScorer(model_type="distilbert-base-uncased", num_layers=5)
+        _BERT_AVAILABLE = True
+        logger.info("BERTScorer loaded: distilbert-base-uncased")
+    except Exception as e:
+        _BERT_SCORER = None
+        _BERT_AVAILABLE = False
+        logger.info(f"BERTScorer unavailable: {e}")
+    return _BERT_SCORER
+
+def compute_bertscore(hypothesis: str, reference: str) -> float:
+    """Compute BERTScore F1 metric."""
+    scorer = _get_bert_scorer()
+    if scorer is None or not hypothesis or not reference:
+        return -1.0
+    try:
+        P, R, F1 = scorer.score([hypothesis], [reference])
+        return max(0.01, min(0.99, float(F1.mean())))
+    except Exception as e:
+        logger.warning(f"BERTScore computation failed: {e}")
+        return -1.0
+
+
+# ---------------------------------------------------------------------------
 # NLI Entailment (lazy-loaded cross-encoder)
 # ---------------------------------------------------------------------------
 
@@ -634,17 +670,22 @@ def _explanation_score(reason_text: str, ground_truth: Dict[str, Any]) -> float:
     rouge = compute_rouge(reason_text, gt_reference)
     rouge_avg = (rouge["rouge1"] + rouge["rouge2"] + rouge["rougeL"]) / 3.0
     if rouge_avg > 0.0:
-        scores.append((rouge_avg, 0.20))
+        scores.append((rouge_avg, 0.15))
 
-    # Signal 3: NLI entailment (logical consistency)
+    # Signal 3: BERTScore (deep contextual similarity)
+    bert_score = compute_bertscore(reason_text, gt_reference) if gt_reference else -1.0
+    if bert_score >= 0.0:
+        scores.append((bert_score, 0.20))
+
+    # Signal 4: NLI entailment (logical consistency)
     nli_score = compute_nli_entailment(gt_reference, reason_text) if gt_reference else -1.0
     if nli_score >= 0.0:
-        scores.append((nli_score, 0.20))
+        scores.append((nli_score, 0.15))
 
-    # Signal 4: Keyword overlap (always available)
+    # Signal 5: Keyword overlap (always available)
     kw_score = _keyword_overlap(reason_text, desc_kws) if desc_kws else -1.0
     if kw_score >= 0.0:
-        scores.append((kw_score, 0.25))
+        scores.append((kw_score, 0.15))
 
     if scores:
         # Weighted blend of available signals
