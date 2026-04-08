@@ -127,7 +127,12 @@ class MetricsTracker:
     ):
         self.session_id = session_id or f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         self.log_dir = Path(log_dir) if log_dir else Path(__file__).parent.parent / "metrics_logs"
-        self.log_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self.log_dir.mkdir(parents=True, exist_ok=True)
+        except PermissionError:
+            # HF Spaces / Docker: /app is read-only, fall back to /tmp
+            self.log_dir = Path("/tmp/metrics_logs")
+            self.log_dir.mkdir(parents=True, exist_ok=True)
         self.window_size = window_size
 
         self.current_session = TrainingSession(session_id=self.session_id)
