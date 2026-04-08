@@ -25,3 +25,8 @@ Thumbs.db
 training_results/*.png
 training_results/*.pt
 training_results/*.npz
+deep_scan.py
+deep_scan_ssl.py
+scan_results.txt
+ultra_results.txt
+ultra_scan.py

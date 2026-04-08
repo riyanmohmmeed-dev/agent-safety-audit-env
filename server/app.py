@@ -597,7 +597,7 @@ async def get_deep_analysis():
     tracker = get_tracker()
     
     # Advanced analytics using the raw episode data
-    episodes = tracker._episodes
+    episodes = tracker.current_session.episode_metrics
     if not episodes:
         return {"error": "Not enough episodes for statistical analysis."}
     

@@ -525,6 +525,12 @@ class Leaderboard:
             "submitted_at": datetime.now().isoformat(),
             "metadata": metadata or {},
         }
+        
+        # Check if model already exists and update
+        existing = next((e for e in self.entries if e["model_name"] == model_name), None)
+        if existing:
+            self.entries.remove(existing)
+            
         self.entries.append(entry)
         self.entries.sort(key=lambda e: e["overall_score"], reverse=True)
         rank = next(i + 1 for i, e in enumerate(self.entries) if e is entry)
