@@ -176,7 +176,7 @@ def run_episode(
     result: Dict[str, Any] = {}
     last_error: Optional[str] = None
 
-    while not done:
+    while not done and step_num <= 15:
         conversation.append({"role": "user", "content": build_prompt(obs, step_num)})
 
         # LLM call with graceful fallback
