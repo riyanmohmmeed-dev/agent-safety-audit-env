@@ -567,6 +567,177 @@ async def adversarial_summary():
 
 
 # ---------------------------------------------------------------------------
+# Metrics, Batch Evaluation & Leaderboard (v3.0 — research-grade)
+# ---------------------------------------------------------------------------
+
+try:
+    from metrics import get_tracker, get_leaderboard
+except ImportError:
+    try:
+        from server.metrics import get_tracker, get_leaderboard
+    except ImportError:
+        get_tracker = None
+        get_leaderboard = None
+        logger.warning("Metrics module not available")
+
+
+@app.get("/metrics")
+async def get_metrics():
+    """Real-time metrics from the current training session.
+
+    Returns session-level aggregates including detection rate,
+    false positive rate, average reward, skill rating, and trend analysis.
+    """
+    if get_tracker is None:
+        raise HTTPException(status_code=501, detail="Metrics module not available")
+    tracker = get_tracker()
+    return tracker.get_real_time_metrics()
+
+
+@app.get("/metrics/summary")
+async def get_metrics_summary():
+    """Human-readable training summary report.
+
+    Returns a formatted text report with performance interpretation,
+    trend analysis, and actionable recommendations.
+    """
+    if get_tracker is None:
+        raise HTTPException(status_code=501, detail="Metrics module not available")
+    tracker = get_tracker()
+    return {
+        "report": tracker.generate_summary_report(),
+        "training_curves": tracker.get_training_curve_data(),
+        "violation_heatmap": tracker.get_violation_heatmap_data(),
+        "reward_analysis": tracker.get_reward_breakdown_analysis(),
+    }
+
+
+@app.get("/metrics/timing")
+async def get_metrics_timing():
+    """Per-episode timing data for performance profiling."""
+    if get_tracker is None:
+        raise HTTPException(status_code=501, detail="Metrics module not available")
+    tracker = get_tracker()
+    return tracker.get_timing_metrics()
+
+
+class BatchItem(BaseModel):
+    """A single scenario for batch evaluation."""
+    task_id: str = Field(default="task_1_easy_single_violation")
+    seed: Optional[int] = None
+
+
+class BatchRequest(BaseModel):
+    """Batch evaluation request — evaluate multiple scenarios at once."""
+    items: List[BatchItem] = Field(..., min_length=1, max_length=50)
+
+
+@app.post("/batch/evaluate")
+async def batch_evaluate(request: BatchRequest):
+    """Evaluate multiple scenarios in a single request.
+
+    Runs each scenario sequentially (reset → step through all actions → grade)
+    and returns aggregated results. Useful for model benchmarking.
+
+    Max 50 scenarios per request to prevent timeouts.
+    """
+    results = []
+    total_score = 0.0
+
+    for i, item in enumerate(request.items):
+        try:
+            # Reset for this scenario
+            obs = _env.reset(seed=item.seed, task_id=item.task_id)
+            episode_reward = 0.0
+            step_count = 0
+
+            # Run baseline steps
+            while not obs.done and step_count < 15:
+                action = MonitorAction(decision="allow", reason="Batch baseline pass-through")
+                obs = _env.step(action)
+                episode_reward += obs.reward if obs.reward else 0.0
+                step_count += 1
+
+            score = max(0.01, min(0.99, episode_reward / max(1, step_count)))
+            total_score += score
+
+            results.append({
+                "index": i,
+                "task_id": item.task_id,
+                "score": round(score, 4),
+                "steps": step_count,
+                "done": obs.done,
+            })
+        except Exception as e:
+            results.append({
+                "index": i,
+                "task_id": item.task_id,
+                "score": 0.01,
+                "error": str(e),
+            })
+
+    avg_score = total_score / max(1, len(results))
+
+    return {
+        "total_items": len(results),
+        "results": results,
+        "summary": {
+            "avg_score": round(avg_score, 4),
+            "score_distribution": {
+                "high": sum(1 for r in results if r.get("score", 0) > 0.7),
+                "medium": sum(1 for r in results if 0.3 <= r.get("score", 0) <= 0.7),
+                "low": sum(1 for r in results if r.get("score", 0) < 0.3),
+            },
+        },
+    }
+
+
+class LeaderboardSubmission(BaseModel):
+    """Submit evaluation results to the leaderboard."""
+    model_name: str = Field(..., min_length=1, max_length=100)
+    overall_score: float = Field(..., ge=0.0, le=1.0)
+    detection_rate: float = Field(default=0.0, ge=0.0, le=1.0)
+    false_positive_rate: float = Field(default=0.0, ge=0.0, le=1.0)
+    type_accuracy: float = Field(default=0.0, ge=0.0, le=1.0)
+    explanation_quality: float = Field(default=0.0, ge=0.0, le=1.0)
+    metadata: Optional[Dict[str, Any]] = None
+
+
+@app.get("/leaderboard")
+async def get_leaderboard_endpoint():
+    """Model performance leaderboard sorted by overall score.
+
+    Returns the top 20 model submissions ranked by overall score,
+    with detailed breakdowns of detection rate, false positive rate,
+    type accuracy, and explanation quality.
+    """
+    if get_leaderboard is None:
+        raise HTTPException(status_code=501, detail="Leaderboard module not available")
+    lb = get_leaderboard()
+    return {"leaderboard": lb.get_leaderboard(top_n=20)}
+
+
+@app.post("/leaderboard/submit")
+async def submit_to_leaderboard(submission: LeaderboardSubmission):
+    """Submit model evaluation results to the leaderboard."""
+    if get_leaderboard is None:
+        raise HTTPException(status_code=501, detail="Leaderboard module not available")
+    lb = get_leaderboard()
+    entry = lb.submit(
+        model_name=submission.model_name,
+        scores={
+            "overall": submission.overall_score,
+            "detection_rate": submission.detection_rate,
+            "false_positive_rate": submission.false_positive_rate,
+            "type_accuracy": submission.type_accuracy,
+            "explanation_quality": submission.explanation_quality,
+        },
+        metadata=submission.metadata,
+    )
+    return {"status": "submitted", "entry": entry}
+
+
+# ---------------------------------------------------------------------------
 # Gradio Web UI (mounted LAST at / for HuggingFace Spaces)
 # ---------------------------------------------------------------------------
 
