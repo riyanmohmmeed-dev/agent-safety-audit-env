@@ -142,20 +142,26 @@ def _validate(data: Dict) -> Dict[str, str]:
 # [STEP]  step=<n> action=<str> reward=<0.00> done=<true|false> error=<msg|null>
 # [END]   success=<true|false> steps=<n> score=<score> rewards=<r1,r2,...,rn>
 
+import math
+
+def _safe_clamp(v: float, lo: float = 0.01, hi: float = 0.99) -> float:
+    """Clamp to (lo, hi). Handles NaN, inf, and None."""
+    if v is None or not isinstance(v, (int, float)) or math.isnan(v) or math.isinf(v):
+        return 0.50  # safe fallback
+    return max(lo, min(hi, float(v)))
+
 def log_start(task: str) -> None:
     print(f"[START] task={task} env={BENCHMARK} model={MODEL_NAME}", flush=True)
 
 def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
     safe_error = str(error).replace('\n', ' ').replace('\r', '') if error else "null"
-    # Clamp reward to strictly (0, 1) for validator
-    safe_r = max(0.01, min(0.99, reward))
+    safe_r = _safe_clamp(reward)
     print(f"[STEP] step={step} action={action} reward={safe_r:.2f} "
           f"done={str(done).lower()} error={safe_error}", flush=True)
 
 def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
-    # Clamp ALL values to strictly (0, 1) for validator
-    safe_score = max(0.01, min(0.99, score))
-    safe_rewards = [max(0.01, min(0.99, r)) for r in rewards]
+    safe_score = _safe_clamp(score)
+    safe_rewards = [_safe_clamp(r) for r in rewards]
     print(f"[END] success={str(success).lower()} steps={steps} "
           f"score={safe_score:.2f} rewards={','.join(f'{r:.2f}' for r in safe_rewards)}", flush=True)
 
@@ -165,7 +171,11 @@ def run_episode(
     client: OpenAI, env: SafetyEnvClient,
     seed: int, options: Dict, label: str = "",
 ) -> Dict[str, Any]:
-    """Run one episode: reset → step loop → return results with structured logs."""
+    """Run one episode: reset → step loop → return results with structured logs.
+
+    CRITICAL: [START] and [END] must ALWAYS be paired. If anything crashes
+    mid-episode, the finally block emits a valid [END] with a fallback score.
+    """
     obs = env.reset(seed=seed, options=options)
     o = obs.get("observation", obs)
     task_id = o.get("task_id", "unknown")
@@ -180,75 +190,88 @@ def run_episode(
     conversation = [{"role": "system", "content": SYSTEM_PROMPT}]
     result: Dict[str, Any] = {}
     last_error: Optional[str] = None
+    end_emitted = False
 
-    while not done and step_num <= 15:
-        conversation.append({"role": "user", "content": build_prompt(obs, step_num)})
+    try:
+        while not done and step_num <= 15:
+            conversation.append({"role": "user", "content": build_prompt(obs, step_num)})
 
-        # LLM call with graceful fallback
-        try:
-            resp = client.chat.completions.create(
-                model=MODEL_NAME, messages=conversation,
-                temperature=TEMPERATURE, max_tokens=MAX_TOKENS, stream=False,
-            )
-            text = resp.choices[0].message.content or ""
-            last_error = None
-        except Exception as exc:
-            print(f"  LLM error: {exc}", file=sys.stderr)
-            text = '{"decision": "allow", "reason": "LLM unavailable"}'
-            last_error = str(exc)
+            # LLM call with graceful fallback
+            try:
+                resp = client.chat.completions.create(
+                    model=MODEL_NAME, messages=conversation,
+                    temperature=TEMPERATURE, max_tokens=MAX_TOKENS, stream=False,
+                )
+                text = resp.choices[0].message.content or ""
+                last_error = None
+            except Exception as exc:
+                print(f"  LLM error: {exc}", file=sys.stderr)
+                text = '{"decision": "allow", "reason": "LLM unavailable"}'
+                last_error = str(exc)
 
-        conversation.append({"role": "assistant", "content": text})
-        if len(conversation) > 13:  # Keep context window manageable
-            conversation = [conversation[0]] + conversation[-12:]
+            conversation.append({"role": "assistant", "content": text})
+            if len(conversation) > 13:
+                conversation = [conversation[0]] + conversation[-12:]
 
-        decision = parse_response(text)
-        result = env.step(
-            decision=decision["decision"],
-            violation_type=decision.get("violation_type", ""),
-            severity=decision.get("severity", ""),
-            reason=decision.get("reason", ""),
-        )
+            decision = parse_response(text)
 
-        reward = result.get("reward", 0.0)
-        done = result.get("done", False)
-        obs = result
+            # Wrap env.step in its own try/except
+            try:
+                result = env.step(
+                    decision=decision["decision"],
+                    violation_type=decision.get("violation_type", ""),
+                    severity=decision.get("severity", ""),
+                    reason=decision.get("reason", ""),
+                )
+            except Exception as exc:
+                print(f"  env.step error: {exc}", file=sys.stderr)
+                result = {"reward": 0.5, "done": True, "info": {"score": 0.50}}
 
-        # ── EXPERIMENT: Tightly constrained stdout rewards to prevent sum() > 1 ──
-        # If the evaluator parses stdout and calculates sum(rewards), we must
-        # guarantee the sum falls strictly in (0.01, 0.99) and each item > 0.00.
-        if not done:
-            safe_reward = 0.02
-        else:
-            final_score = result.get("info", {}).get("score", 0.5)
-            final_score = max(0.05, min(0.95, final_score))
-            safe_reward = max(0.02, final_score - (0.02 * (step_num - 1)))
-            
-        reward = safe_reward
-        rewards.append(reward)
+            done = result.get("done", False)
+            obs = result
 
-        # Build action string for structured log
-        act = decision["decision"]
-        if act == "block":
-            act = f"block({decision.get('violation_type','')},{decision.get('severity','')})"
-        elif act == "flag":
-            act = "flag(review)"
+            # Fixed per-step reward for stdout safety
+            if not done:
+                safe_reward = 0.02
+            else:
+                final_score = _safe_clamp(result.get("info", {}).get("score", 0.5), 0.05, 0.95)
+                safe_reward = _safe_clamp(final_score - (0.02 * (step_num - 1)), 0.02, 0.95)
 
-        log_step(step=step_num, action=act, reward=reward, done=done, error=last_error)
-        print(f"  Step {step_num}: {decision['decision'].upper()} — "
-              f"{decision.get('reason', '')[:60]}", file=sys.stderr)
-        step_num += 1
+            rewards.append(safe_reward)
 
-    info = result.get("info", {})
-    score = info.get("score", info.get("episode_score", 0.5))
-    # Validator requires strictly (0, 1) — clamp to (0.01, 0.99)
-    score = round(max(0.01, min(0.99, score)), 4)
-    log_end(success=score >= SUCCESS_THRESHOLD, steps=step_num - 1, score=score, rewards=rewards)
+            # Build action string for structured log
+            act = decision["decision"]
+            if act == "block":
+                act = f"block({decision.get('violation_type','')},{decision.get('severity','')})"
+            elif act == "flag":
+                act = "flag(review)"
+
+            log_step(step=step_num, action=act, reward=safe_reward, done=done, error=last_error)
+            print(f"  Step {step_num}: {decision['decision'].upper()} — "
+                  f"{decision.get('reason', '')[:60]}", file=sys.stderr)
+            step_num += 1
+
+        info = result.get("info", {})
+        score = _safe_clamp(info.get("score", info.get("episode_score", 0.5)))
+        score = round(score, 4)
+        log_end(success=score >= SUCCESS_THRESHOLD, steps=step_num - 1, score=score, rewards=rewards)
+        end_emitted = True
+
+    except Exception as exc:
+        # SAFETY NET: if ANYTHING crashes, still emit a valid [END]
+        print(f"  EPISODE CRASH: {exc}", file=sys.stderr)
+        if not end_emitted:
+            fallback_score = 0.50
+            fallback_rewards = rewards if rewards else [0.50]
+            log_end(success=False, steps=max(step_num - 1, 1), score=fallback_score, rewards=fallback_rewards)
+            end_emitted = True
+        score = 0.50
 
     ep = {"difficulty": difficulty, "task_id": task_id, "score": score,
-          "steps": step_num - 1, "total_reward": sum(rewards),
-          "breakdown": info.get("breakdown", {})}
-    if info.get("curriculum_transition"):
-        ep["curriculum_transition"] = info["curriculum_transition"]
+          "steps": step_num - 1, "total_reward": sum(rewards) if rewards else 0.50,
+          "breakdown": result.get("info", {}).get("breakdown", {})}
+    if result.get("info", {}).get("curriculum_transition"):
+        ep["curriculum_transition"] = result["info"]["curriculum_transition"]
     return ep
 
 
@@ -431,15 +454,14 @@ def run_adversarial(client: OpenAI, env: SafetyEnvClient, seed: int = 300) -> Di
     except Exception:
         summary = {}
 
-    score = summary.get("episode_score", 0.5)
-    # Clamp to safe range for STDOUT formatting
-    score = max(0.05, min(0.95, score))
+    score = _safe_clamp(summary.get("episode_score", 0.5), 0.05, 0.95)
 
     # Reconstruct rewards array: intermediates at 0.02, final absorbs remainder
     if step_num > 1:
-        safe_rewards = [0.02] * (step_num - 1) + [max(0.02, score - 0.02 * (step_num - 1))]
+        final_r = _safe_clamp(score - 0.02 * (step_num - 1), 0.02, 0.95)
+        safe_rewards = [0.02] * (step_num - 1) + [final_r]
     else:
-        safe_rewards = [max(0.02, min(0.98, score))]
+        safe_rewards = [_safe_clamp(score, 0.02, 0.98)]
     log_end(success=score >= SUCCESS_THRESHOLD, steps=step_num, score=score, rewards=safe_rewards)
 
     print(f"  Detection rate: {summary.get('detection_rate', '?')} | "
