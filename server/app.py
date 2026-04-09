@@ -793,8 +793,20 @@ async def submit_to_leaderboard(submission: LeaderboardSubmission):
 
 
 # ---------------------------------------------------------------------------
+# Static Files (Sentinel character images)
+# ---------------------------------------------------------------------------
+
+from pathlib import Path
+_static_dir = Path(__file__).resolve().parent.parent / "static"
+if _static_dir.exists():
+    from starlette.staticfiles import StaticFiles
+    app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
+    logger.info("Static files mounted at /static")
+
+# ---------------------------------------------------------------------------
 # Gradio Web UI (mounted LAST at / for HuggingFace Spaces)
 # ---------------------------------------------------------------------------
+
 
 try:
     import gradio as gr

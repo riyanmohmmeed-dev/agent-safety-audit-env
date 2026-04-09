@@ -32,3 +32,4 @@ ultra_results.txt
 ultra_scan.py
 training_results_30k/
 training_results/
+static/*.png

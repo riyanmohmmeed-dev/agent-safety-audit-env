@@ -18,6 +18,7 @@ COPY openenv.yaml pyproject.toml README.md ./
 COPY server/ ./server/
 COPY tasks/ ./tasks/
 COPY sandbox/ ./sandbox/
+COPY static/ ./static/
 
 # Create sandbox workspace for live execution (non-root writable)
 RUN mkdir -p /tmp/sandbox && chmod 777 /tmp/sandbox
