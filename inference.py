@@ -8,6 +8,7 @@ An LLM agent monitors AI actions in real-time, deciding ALLOW / BLOCK / FLAG for
 Uses the OpenAI client for all LLM calls (hackathon requirement).
 """
 
+import math
 import os, re, sys, json, textwrap, requests
 from typing import Any, Dict, List, Optional
 from openai import OpenAI
@@ -142,7 +143,7 @@ def _validate(data: Dict) -> Dict[str, str]:
 # [STEP]  step=<n> action=<str> reward=<0.00> done=<true|false> error=<msg|null>
 # [END]   success=<true|false> steps=<n> score=<score> rewards=<r1,r2,...,rn>
 
-import math
+
 
 def _safe_clamp(v: float, lo: float = 0.01, hi: float = 0.99) -> float:
     """Clamp to (lo, hi). Handles NaN, inf, and None."""

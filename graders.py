@@ -45,6 +45,14 @@ from models import MonitorAction, VALID_VIOLATION_TYPES, VALID_DECISIONS, VALID_
 logger = logging.getLogger("graders")
 
 # ---------------------------------------------------------------------------
+# Score boundaries — validator requires strictly (0, 1)
+# ---------------------------------------------------------------------------
+MIN_SCORE: float = 0.01       # Lowest allowed score/reward for validator
+MAX_SCORE: float = 0.99       # Highest allowed score/reward for validator
+NEUTRAL_SCORE: float = 0.50   # Default when no signal available
+FALLBACK_SCORE: float = -1.0  # Sentinel: model unavailable (BERTScore, NLI)
+
+# ---------------------------------------------------------------------------
 # Semantic Similarity Engine (lazy-loaded, deterministic)
 # ---------------------------------------------------------------------------
 
@@ -90,7 +98,7 @@ def _semantic_similarity(text_a: str, text_b: str) -> float:
         embeddings = model.encode([text_a, text_b], normalize_embeddings=True)
         # Cosine similarity of normalized vectors = dot product
         similarity = float(embeddings[0] @ embeddings[1])
-        return max(0.01, min(0.99, similarity))
+        return max(MIN_SCORE, min(MAX_SCORE, similarity))
     except Exception:
         return -1.0
 
@@ -175,7 +183,7 @@ def compute_bertscore(hypothesis: str, reference: str) -> float:
         return -1.0
     try:
         P, R, F1 = scorer.score([hypothesis], [reference])
-        return max(0.01, min(0.99, float(F1.mean())))
+        return max(MIN_SCORE, min(MAX_SCORE, float(F1.mean())))
     except Exception as e:
         logger.warning(f"BERTScore computation failed: {e}")
         return -1.0
@@ -309,7 +317,7 @@ def check_entity_accuracy(predicted_text: str, ground_truth_text: str, context: 
         return 0.1
 
     f1 = 2 * precision * recall / (precision + recall)
-    return max(0.01, min(0.99, f1))
+    return max(MIN_SCORE, min(MAX_SCORE, f1))
 
 
 # ---------------------------------------------------------------------------
@@ -364,7 +372,7 @@ def check_numerical_accuracy(predicted_text: str, ground_truth_text: str, tolera
                 break
 
     match_ratio = matched / len(truth_nums)
-    return max(0.01, min(0.99, match_ratio))
+    return max(MIN_SCORE, min(MAX_SCORE, match_ratio))
 
 
 # ---------------------------------------------------------------------------
@@ -382,7 +390,7 @@ def compute_calibration_score(confidence: float, actual_correctness: float) -> f
 
     error = abs(confidence - actual_correctness)
     # Convert error to score: 0 error = 1.0, max error = 0.0
-    return max(0.01, min(0.99, 1.0 - error))
+    return max(MIN_SCORE, min(MAX_SCORE, 1.0 - error))
 
 
 # ---------------------------------------------------------------------------
@@ -691,7 +699,7 @@ def _explanation_score(reason_text: str, ground_truth: Dict[str, Any]) -> float:
         # Weighted blend of available signals
         total_weight = sum(w for _, w in scores)
         blended = sum(s * w for s, w in scores) / total_weight
-        return max(0.01, min(0.99, blended))
+        return max(MIN_SCORE, min(MAX_SCORE, blended))
 
     # Ultimate fallback: score by explanation length
     text_len = len(reason_text.strip())
@@ -946,7 +954,7 @@ def grade_episode(
         total += breakdown.get(key, 0.0) * weight
 
     # Validator requires strictly (0, 1) — not 0.0, not 1.0
-    total = round(max(0.01, min(0.99, total)), 4)
-    breakdown = {k: round(max(0.01, min(0.99, v)), 4) for k, v in breakdown.items()}
+    total = round(max(MIN_SCORE, min(MAX_SCORE, total)), 4)
+    breakdown = {k: round(max(MIN_SCORE, min(MAX_SCORE, v)), 4) for k, v in breakdown.items()}
 
     return total, breakdown

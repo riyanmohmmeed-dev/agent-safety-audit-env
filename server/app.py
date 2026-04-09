@@ -110,7 +110,7 @@ class StepRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 @app.get("/health")
-async def health():
+async def health() -> Dict[str, Any]:
     """Health check — returns server status and task count."""
     return {
         "status": "healthy",
@@ -226,7 +226,7 @@ async def mcp_endpoint(request: Request):
 # ---------------------------------------------------------------------------
 
 @app.get("/tasks")
-async def tasks():
+async def tasks() -> Dict[str, List[Dict[str, Any]]]:
     """List all available tasks with metadata and schemas."""
     task_ids = env.get_all_task_ids()
     return {
@@ -250,7 +250,7 @@ async def tasks():
 # ---------------------------------------------------------------------------
 
 @app.get("/grader")
-async def grader():
+async def grader() -> Dict[str, Any]:
     """Return grader metadata and scoring weights per difficulty."""
     return {
         "graders": GRADERS,
@@ -354,7 +354,7 @@ def _run_heuristic_baseline() -> Dict[str, Any]:
 
 
 @app.get("/baseline")
-async def baseline():
+async def baseline() -> Dict[str, Any]:
     """Run baseline inference and return scores."""
     start = time.time()
     try:
@@ -368,7 +368,7 @@ async def baseline():
 
 
 @app.get("/baseline-trigger-inference-script")
-async def baseline_trigger():
+async def baseline_trigger() -> Dict[str, Any]:
     """Trigger the full baseline inference script."""
     start = time.time()
     try:
@@ -387,7 +387,7 @@ async def baseline_trigger():
 # ---------------------------------------------------------------------------
 
 @app.post("/reset")
-async def reset(request: Optional[ResetRequest] = None):
+async def reset(request: Optional[ResetRequest] = None) -> Dict[str, Any]:
     """Reset the environment to a new episode.
 
     Body (optional): {"seed": 42, "options": {"difficulty": "easy", "task_id": "easy_001"}}
@@ -408,7 +408,7 @@ async def reset(request: Optional[ResetRequest] = None):
 # ---------------------------------------------------------------------------
 
 @app.post("/step")
-async def step(request: StepRequest):
+async def step(request: StepRequest) -> Dict[str, Any]:
     """Submit a monitoring decision for the current action.
 
     Body: {"decision": "block", "violation_type": "unauthorized_access",
@@ -440,7 +440,7 @@ async def step(request: StepRequest):
 # ---------------------------------------------------------------------------
 
 @app.get("/state")
-async def state():
+async def state() -> Dict[str, Any]:
     """Return current episode state (no ground truth exposed)."""
     return env.state
 
@@ -505,7 +505,7 @@ class AdversarialStepRequest(BaseModel):
 
 
 @app.post("/adversarial/reset")
-async def adversarial_reset(req: AdversarialResetRequest):
+async def adversarial_reset(req: AdversarialResetRequest) -> Dict[str, Any]:
     """Reset for a new adversarial episode with live sandbox."""
     try:
         result = _adversarial_env.reset(seed=req.seed)
@@ -517,7 +517,7 @@ async def adversarial_reset(req: AdversarialResetRequest):
 
 
 @app.post("/adversarial/step")
-async def adversarial_step(req: AdversarialStepRequest):
+async def adversarial_step(req: AdversarialStepRequest) -> Dict[str, Any]:
     """Execute a command in the sandbox and grade the monitor's decision.
 
     Flow:
@@ -558,7 +558,7 @@ async def adversarial_step(req: AdversarialStepRequest):
 
 
 @app.get("/adversarial/summary")
-async def adversarial_summary():
+async def adversarial_summary() -> Dict[str, Any]:
     """Get the episode summary with filesystem verification."""
     try:
         return _adversarial_env.get_episode_summary()
