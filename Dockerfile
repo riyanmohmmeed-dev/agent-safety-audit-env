@@ -12,13 +12,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code (separate layer — changes more often)
-COPY models.py graders.py baseline.py client.py __init__.py inference.py ui.py ./
-COPY openenv.yaml pyproject.toml README.md ./
-COPY server/ ./server/
-COPY tasks/ ./tasks/
-COPY sandbox/ ./sandbox/
-COPY static/ ./static/
+# Copy entire application (filtered by .dockerignore)
+COPY . .
+
+# Ensure static directory exists (even if no images yet)
+RUN mkdir -p /app/static
 
 # Create sandbox workspace for live execution (non-root writable)
 RUN mkdir -p /tmp/sandbox && chmod 777 /tmp/sandbox
