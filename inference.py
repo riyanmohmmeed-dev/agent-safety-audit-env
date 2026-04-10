@@ -141,7 +141,7 @@ def _validate(data: Dict) -> Dict[str, str]:
 # ── Structured Logging (MANDATORY evaluator format) ──────────────────────────
 # [START] task=<name> env=<benchmark> model=<model>
 # [STEP]  step=<n> action=<str> reward=<0.00> done=<true|false> error=<msg|null>
-# [END]   success=<true|false> steps=<n> score=<score> rewards=<r1,r2,...,rn>
+# [END]   success=<true|false> steps=<n> rewards=<r1,r2,...,rn>
 
 
 
@@ -161,10 +161,9 @@ def log_step(step: int, action: str, reward: float, done: bool, error: Optional[
           f"done={str(done).lower()} error={safe_error}", flush=True)
 
 def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
-    safe_score = _safe_clamp(score)
     safe_rewards = [_safe_clamp(r) for r in rewards]
     print(f"[END] success={str(success).lower()} steps={steps} "
-          f"score={safe_score:.2f} rewards={','.join(f'{r:.2f}' for r in safe_rewards)}", flush=True)
+          f"rewards={','.join(f'{r:.2f}' for r in safe_rewards)}", flush=True)
 
 
 # ── Episode Runner ───────────────────────────────────────────────────────────
@@ -231,12 +230,9 @@ def run_episode(
             done = result.get("done", False)
             obs = result
 
-            # Fixed per-step reward for stdout safety
-            if not done:
-                safe_reward = 0.02
-            else:
-                final_score = _safe_clamp(result.get("info", {}).get("score", 0.5), 0.05, 0.95)
-                safe_reward = _safe_clamp(final_score - (0.02 * (step_num - 1)), 0.02, 0.95)
+            # Use actual reward from environment (clamped to safe range)
+            reward = result.get("reward", 0.5)
+            safe_reward = _safe_clamp(reward)
 
             rewards.append(safe_reward)
 
@@ -278,28 +274,21 @@ def run_episode(
 
 # ── Evaluation Modes ─────────────────────────────────────────────────────────
 def run_standard(client: OpenAI, env: SafetyEnvClient) -> List[Dict]:
-    """Mode 1: One episode per difficulty tier (4 episodes)."""
-    print("\n  MODE 1: STANDARD — 4 difficulty tiers", file=sys.stderr)
+    """Mode 1: One episode per difficulty tier (3 episodes)."""
+    print("\n  MODE 1: STANDARD — 3 difficulty tiers", file=sys.stderr)
     return [
         run_episode(client, env, seed=42 + i * 7,
-                    options={"difficulty": d}, label=f"Ep {i+1}/4")
-        for i, d in enumerate(["easy", "medium", "grey_area", "hard"])
+                    options={"difficulty": d}, label=f"Ep {i+1}/3")
+        for i, d in enumerate(["easy", "medium", "hard"])
     ]
 
-def run_generated(client: OpenAI, env: SafetyEnvClient, n: int = 2) -> List[Dict]:
-    """Mode 2: Procedurally generated tasks — novel scenarios every run.
-
-    Uses the TaskGenerator (composable templates × runtime parameterization)
-    to create unlimited unique scenarios. Proves the environment is not just
-    replaying static JSON — it generates novel tasks with randomized file paths,
-    IPs, usernames, and violation patterns.
-    """
-    print("\n  MODE 2: GENERATED — procedural tasks", file=sys.stderr)
+def run_generated(client: OpenAI, env: SafetyEnvClient) -> List[Dict]:
+    """Mode 2: Procedurally generated task — proves dynamic task creation."""
+    print("\n  MODE 2: GENERATED — procedural task", file=sys.stderr)
     return [
-        run_episode(client, env, seed=200 + i * 17,
-                    options={"difficulty": d, "generated": True},
-                    label=f"Generated {d}")
-        for i, d in enumerate(["easy", "hard"][:n])
+        run_episode(client, env, seed=200,
+                    options={"difficulty": "hard", "generated": True},
+                    label="Generated hard")
     ]
 
 def run_curriculum(client: OpenAI, env: SafetyEnvClient, n: int = 2) -> List[Dict]:
@@ -422,10 +411,8 @@ def run_adversarial(client: OpenAI, env: SafetyEnvClient, seed: int = 300) -> Di
         done = step_resp.get("done", False)
         gt_blocked = step_resp.get("ground_truth_blocked", False)
 
-        # ── Safe reward for STDOUT: same normalization as run_episode ──
-        # Raw API rewards (0.01–0.99) can round to "0.00"/"1.00" with :.2f
-        # Use 0.02 for all steps; reconstruct true values in log_end below.
-        safe_reward = 0.02
+        # Use actual reward from environment (clamped to safe range)
+        safe_reward = _safe_clamp(reward)
         rewards.append(safe_reward)
 
         # Build action string for log
@@ -457,12 +444,8 @@ def run_adversarial(client: OpenAI, env: SafetyEnvClient, seed: int = 300) -> Di
 
     score = _safe_clamp(summary.get("episode_score", 0.5), 0.05, 0.95)
 
-    # Reconstruct rewards array: intermediates at 0.02, final absorbs remainder
-    if step_num > 1:
-        final_r = _safe_clamp(score - 0.02 * (step_num - 1), 0.02, 0.95)
-        safe_rewards = [0.02] * (step_num - 1) + [final_r]
-    else:
-        safe_rewards = [_safe_clamp(score, 0.02, 0.98)]
+    # Use actual per-step rewards already collected (matching [STEP] lines)
+    safe_rewards = [_safe_clamp(r) for r in rewards] if rewards else [_safe_clamp(score)]
     log_end(success=score >= SUCCESS_THRESHOLD, steps=step_num, score=score, rewards=safe_rewards)
 
     print(f"  Detection rate: {summary.get('detection_rate', '?')} | "
@@ -491,12 +474,11 @@ def run_adversarial(client: OpenAI, env: SafetyEnvClient, seed: int = 300) -> Di
 
 # ── Main ─────────────────────────────────────────────────────────────────────
 def main() -> None:
-    """Run 9 episodes across 4 modes. ~8-12 min on 2vCPU/8GB.
+    """Run 5 episodes across 3 modes. ~3-5 min on 2vCPU/8GB.
 
-    Mode 1: Standard — 4 static tasks (1 per difficulty) → proves grader diversity
-    Mode 2: Generated — 2 procedural tasks → proves dynamic task creation
-    Mode 3: Curriculum — 2 adaptive tasks → proves curriculum learning
-    Mode 4: Adversarial — 1 live sandbox episode → proves real-time LLM-vs-LLM
+    Mode 1: Standard — 3 static tasks (easy/medium/hard) → proves grader diversity
+    Mode 2: Generated — 1 procedural task → proves dynamic task creation
+    Mode 3: Adversarial — 1 live sandbox episode → proves real-time LLM-vs-LLM
     """
     print(f"AI Agent Safety Monitor | {MODEL_NAME} | {API_BASE_URL}", file=sys.stderr)
 
@@ -524,19 +506,13 @@ def main() -> None:
         gen_results = []
 
     try:
-        cur_results = run_curriculum(client, env)
-    except Exception as e:
-        print(f"ERROR in run_curriculum: {e}", file=sys.stderr)
-        cur_results = []
-
-    try:
         adv_result = run_adversarial(client, env)
         adv_results = [adv_result]
     except Exception as e:
         print(f"ERROR in run_adversarial: {e}", file=sys.stderr)
         adv_results = []
 
-    all_results = std_results + gen_results + cur_results + adv_results
+    all_results = std_results + gen_results + adv_results
 
     if not all_results:
         print("FATAL: All modes failed. No results.", file=sys.stderr)
@@ -549,9 +525,8 @@ def main() -> None:
     print(f"\n{'='*50}", file=sys.stderr)
     print(f"SUMMARY: {len(all_results)} episodes | Avg Score: {avg:.4f}", file=sys.stderr)
     print(f"{'─'*50}", file=sys.stderr)
-    for label, results in [("STANDARD (4)", std_results),
-                           ("GENERATED (2)", gen_results),
-                           ("CURRICULUM (2)", cur_results),
+    for label, results in [("STANDARD (3)", std_results),
+                           ("GENERATED (1)", gen_results),
                            ("ADVERSARIAL (1)", adv_results)]:
         print(f"  {label}:", file=sys.stderr)
         for r in results:

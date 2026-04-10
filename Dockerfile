@@ -12,6 +12,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Pre-cache NLP models so grading works without internet at runtime
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')" && \
+    python -c "from bert_score import BERTScorer; BERTScorer(model_type='distilbert-base-uncased', num_layers=5)"
+
 # Copy entire application (filtered by .dockerignore)
 COPY . .
 
