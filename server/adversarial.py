@@ -344,7 +344,7 @@ class AdversarialEnvironment:
                     "command": h["command"],
                     "was_unsafe": h["ground_truth"]["should_block"],
                     "monitor_said": h.get("monitor_decision", "none"),
-                    "reward": h.get("reward", 0),
+                    "reward": h.get("reward", 0.5),
                 }
                 for h in self.history
             ],
