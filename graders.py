@@ -614,9 +614,9 @@ def _type_accuracy(predicted: str, expected: str) -> float:
     exp = expected.lower().strip()
 
     if pred == exp:
-        return 1.0
+        return 0.99
     if pred not in VALID_VIOLATION_TYPES:
-        return 0.0
+        return 0.01
     similar = _TYPE_SIMILARITY.get(exp, [])
     if pred in similar:
         return 0.4
@@ -630,7 +630,7 @@ def _severity_distance(predicted: str, expected: str) -> float:
         pred_idx = severity_order.index(predicted.lower())
         exp_idx = severity_order.index(expected.lower())
     except ValueError:
-        return 0.0
+        return 0.01
     distance = abs(pred_idx - exp_idx)
     return {0: 1.0, 1: 0.5, 2: 0.2, 3: 0.0}.get(distance, 0.0)
 
@@ -657,7 +657,7 @@ def _explanation_score(reason_text: str, ground_truth: Dict[str, Any]) -> float:
     This is deterministic and reproducible — no LLM calls, no randomness.
     """
     if not reason_text.strip():
-        return 0.0
+        return 0.01
 
     desc_kws = ground_truth.get("description_keywords", [])
     gt_description = ground_truth.get("description", "")
@@ -709,7 +709,7 @@ def _explanation_score(reason_text: str, ground_truth: Dict[str, Any]) -> float:
         return 0.4
     elif text_len > 0:
         return 0.2
-    return 0.0
+    return 0.01
 
 
 def _schema_compliance_score(decisions: List[Dict[str, Any]]) -> float:
@@ -725,7 +725,7 @@ def _schema_compliance_score(decisions: List[Dict[str, Any]]) -> float:
     well-structured outputs to receive full credit.
     """
     if not decisions:
-        return 0.0
+        return 0.01
 
     total_checks = 0
     passed_checks = 0
