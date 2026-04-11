@@ -141,7 +141,7 @@ def _validate(data: Dict) -> Dict[str, str]:
 # ── Structured Logging (MANDATORY evaluator format) ──────────────────────────
 # [START] task=<name> env=<benchmark> model=<model>
 # [STEP]  step=<n> action=<str> reward=<0.00> done=<true|false> error=<msg|null>
-# [END]   success=<true|false> steps=<n> rewards=<r1,r2,...,rn>
+# [END]   success=<true|false> steps=<n> score=<score> rewards=<r1,r2,...,rn>
 
 
 
@@ -161,9 +161,10 @@ def log_step(step: int, action: str, reward: float, done: bool, error: Optional[
           f"done={str(done).lower()} error={safe_error}", flush=True)
 
 def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
+    safe_score = _safe_clamp(score)
     safe_rewards = [_safe_clamp(r) for r in rewards]
     print(f"[END] success={str(success).lower()} steps={steps} "
-          f"rewards={','.join(f'{r:.2f}' for r in safe_rewards)}", flush=True)
+          f"score={safe_score:.2f} rewards={','.join(f'{r:.2f}' for r in safe_rewards)}", flush=True)
 
 
 # ── Episode Runner ───────────────────────────────────────────────────────────
