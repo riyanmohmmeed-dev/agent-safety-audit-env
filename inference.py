@@ -274,12 +274,12 @@ def run_episode(
 
 # ── Evaluation Modes ─────────────────────────────────────────────────────────
 def run_standard(client: OpenAI, env: SafetyEnvClient) -> List[Dict]:
-    """Mode 1: One episode per difficulty tier (3 episodes)."""
-    print("\n  MODE 1: STANDARD — 3 difficulty tiers", file=sys.stderr)
+    """Mode 1: One episode per difficulty (2 episodes)."""
+    print("\n  MODE 1: STANDARD — 2 difficulty tiers", file=sys.stderr)
     return [
         run_episode(client, env, seed=42 + i * 7,
-                    options={"difficulty": d}, label=f"Ep {i+1}/3")
-        for i, d in enumerate(["easy", "medium", "hard"])
+                    options={"difficulty": d}, label=f"Ep {i+1}/2")
+        for i, d in enumerate(["easy", "hard"])
     ]
 
 def run_generated(client: OpenAI, env: SafetyEnvClient) -> List[Dict]:
@@ -474,15 +474,14 @@ def run_adversarial(client: OpenAI, env: SafetyEnvClient, seed: int = 300) -> Di
 
 # ── Main ─────────────────────────────────────────────────────────────────────
 def main() -> None:
-    """Run 5 episodes across 3 modes. ~3-5 min on 2vCPU/8GB.
+    """Run 3 episodes across 2 modes. ~2-4 min on 2vCPU/8GB.
 
-    Mode 1: Standard — 3 static tasks (easy/medium/hard) → proves grader diversity
-    Mode 2: Generated — 1 procedural task → proves dynamic task creation
-    Mode 3: Adversarial — 1 live sandbox episode → proves real-time LLM-vs-LLM
+    Mode 1: Standard — 2 static tasks (easy/hard) → proves grader diversity
+    Mode 2: Adversarial — 1 live sandbox episode → proves real-time LLM-vs-LLM
     """
     print(f"AI Agent Safety Monitor | {MODEL_NAME} | {API_BASE_URL}", file=sys.stderr)
 
-    client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
+    client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN, timeout=30.0)
     env = SafetyEnvClient(ENV_BASE_URL)
 
     try:
@@ -500,19 +499,13 @@ def main() -> None:
         std_results = []
 
     try:
-        gen_results = run_generated(client, env)
-    except Exception as e:
-        print(f"ERROR in run_generated: {e}", file=sys.stderr)
-        gen_results = []
-
-    try:
         adv_result = run_adversarial(client, env)
         adv_results = [adv_result]
     except Exception as e:
         print(f"ERROR in run_adversarial: {e}", file=sys.stderr)
         adv_results = []
 
-    all_results = std_results + gen_results + adv_results
+    all_results = std_results + adv_results
 
     if not all_results:
         print("FATAL: All modes failed. No results.", file=sys.stderr)
@@ -525,8 +518,7 @@ def main() -> None:
     print(f"\n{'='*50}", file=sys.stderr)
     print(f"SUMMARY: {len(all_results)} episodes | Avg Score: {avg:.4f}", file=sys.stderr)
     print(f"{'─'*50}", file=sys.stderr)
-    for label, results in [("STANDARD (3)", std_results),
-                           ("GENERATED (1)", gen_results),
+    for label, results in [("STANDARD (2)", std_results),
                            ("ADVERSARIAL (1)", adv_results)]:
         print(f"  {label}:", file=sys.stderr)
         for r in results:

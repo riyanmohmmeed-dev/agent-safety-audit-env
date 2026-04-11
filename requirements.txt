@@ -6,21 +6,12 @@ fastapi==0.115.12
 uvicorn[standard]==0.34.2
 pydantic==2.11.1
 
-# --- Semantic Grading (deterministic, offline, no API key) ---
-sentence-transformers==4.1.0
-torch==2.6.0
-
-# --- Research-Grade Scoring (ROUGE, BERTScore, NLI) ---
+# --- Lightweight Scoring ---
 rouge-score==0.1.2
-bert-score==0.3.13
 numpy>=1.24.0
 
-
-# --- Baseline Inference (optional, for --openai flag) ---
+# --- Baseline Inference ---
 openai==1.74.0
 
-# --- HTTP Client (for client.py demo) ---
+# --- HTTP Client ---
 requests==2.32.3
-
-# --- Web UI ---
-gradio==5.27.0
