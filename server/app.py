@@ -397,7 +397,7 @@ async def reset(request: Optional[ResetRequest] = None) -> Dict[str, Any]:
         if request is None:
             request = ResetRequest()
         obs = env.reset(seed=request.seed, options=request.options)
-        return {"observation": obs.model_dump()}
+        return {"observation": obs.model_dump(), "done": False, "reward": 0.0}
     except Exception as e:
         logger.error(f"Reset error: {e}\n{traceback.format_exc()}")
         raise HTTPException(status_code=400, detail=f"Reset failed: {str(e)}")
