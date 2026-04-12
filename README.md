@@ -13,7 +13,7 @@ tags:
 # AI Agent Safety Monitor
 
 ![Python 3.10+](https://img.shields.io/badge/python-3.10+-3776AB?logo=python&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-209_passed-22c55e)
+![Tests](https://img.shields.io/badge/tests-152_passed-22c55e)
 ![Tasks](https://img.shields.io/badge/tasks-69-f59e0b)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-blue)
