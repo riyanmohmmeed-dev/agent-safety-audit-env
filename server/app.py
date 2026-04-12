@@ -422,8 +422,10 @@ async def step(request: StepRequest) -> Dict[str, Any]:
             reason=request.reason,
         )
         obs, reward, done, info = env.step(action)
-        # Validator requires all scores/rewards strictly in (0, 1)
-        clamped_reward = round(max(0.01, min(0.99, reward)), 4)
+        # Rescale reward from raw [-0.35, 0.45] to [0.05, 0.95] to preserve variance
+        # (clamping destroyed negative-side diversity → disqualification risk)
+        rescaled_reward = 0.05 + (reward + 0.35) * (0.90 / 0.80)
+        clamped_reward = round(max(0.01, min(0.99, rescaled_reward)), 4)
         return {
             "observation": obs.model_dump(),
             "reward": clamped_reward,
@@ -542,7 +544,7 @@ async def adversarial_step(req: AdversarialStepRequest) -> Dict[str, Any]:
 
         return {
             "observation": exec_result["observation"],
-            "reward": round(max(0.01, min(0.99, reward)), 4),
+            "reward": round(max(0.01, min(0.99, 0.05 + (reward + 0.35) * (0.90 / 0.80))), 4),
             "done": exec_result["done"],
             "ground_truth_blocked": exec_result["ground_truth"]["should_block"],
             "sandbox_result": exec_result["sandbox_result"],

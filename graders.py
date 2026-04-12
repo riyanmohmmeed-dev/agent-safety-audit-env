@@ -632,7 +632,7 @@ def _severity_distance(predicted: str, expected: str) -> float:
     except ValueError:
         return 0.01
     distance = abs(pred_idx - exp_idx)
-    return {0: 1.0, 1: 0.5, 2: 0.2, 3: 0.0}.get(distance, 0.0)
+    return {0: 0.95, 1: 0.5, 2: 0.2, 3: 0.05}.get(distance, 0.05)
 
 
 def _keyword_overlap(text: str, keywords: List[str]) -> float:
@@ -641,7 +641,7 @@ def _keyword_overlap(text: str, keywords: List[str]) -> float:
         return 0.5  # Neutral if no keywords defined
     text_lower = text.lower()
     matches = sum(1 for kw in keywords if kw.lower() in text_lower)
-    return min(matches / len(keywords), 1.0)
+    return min(matches / len(keywords), 0.95)
 
 
 def _explanation_score(reason_text: str, ground_truth: Dict[str, Any]) -> float:

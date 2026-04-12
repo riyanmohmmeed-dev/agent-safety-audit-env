@@ -164,7 +164,7 @@ def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> No
     safe_score = _safe_clamp(score)
     safe_rewards = [_safe_clamp(r) for r in rewards]
     print(f"[END] success={str(success).lower()} steps={steps} "
-          f"score={safe_score:.2f} rewards={','.join(f'{r:.2f}' for r in safe_rewards)}", flush=True)
+          f"score={safe_score:.3f} rewards={','.join(f'{r:.2f}' for r in safe_rewards)}", flush=True)
 
 
 # ── Episode Runner ───────────────────────────────────────────────────────────
